@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#333" stroke-width="2" fill="none" stroke-linejoin="round">
+    <!-- 3D cube in perspective -->
+    <path d="M 25 70 L 25 35 L 50 20 L 75 35 L 75 70"/>
+    <path d="M 50 20 L 50 55"/>
+    <path d="M 25 35 L 50 50"/>
+    <path d="M 75 35 L 50 50"/>
+    <!-- Front face bottom -->
+    <line x1="25" y1="70" x2="75" y2="70"/>
+    <!-- Side depth lines -->
+    <path d="M 50 55 L 75 70"/>
+  </g>
+</svg>

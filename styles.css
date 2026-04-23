@@ -303,25 +303,23 @@ body.room-mode #gif-container {
 #table-content {
     position: relative;
     width: 100%;
-    height: calc(100% + var(--table-extra));
     background: #a2927c;
 }
 
 /* Grid Canvas (covers the full table) */
 #grid-canvas {
     position: absolute;
-    top: 0;
+    top: 20px;
     left: 0;
     width: 100%;
     height: 100%;
     z-index: 0;
 }
 
-/* Header Row - sticky/fixed at the top of the frame, never scrolls */
+/* Header Row - sticky at the top of scrollable content */
 .header-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
+    display: block;
     width: 100%;
     height: 20px;
     z-index: 10;
@@ -331,10 +329,10 @@ body.room-mode #gif-container {
 /* GIF Container - lives inside the table, scrolls with it */
 #gif-container {
     position: absolute;
-    top: 0;
+    top: 20px;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 20px);
     pointer-events: none;
     z-index: 2;
 }

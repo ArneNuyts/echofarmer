@@ -1246,7 +1246,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // View mode toggle (3D room <-> flat). Reload to re-init cleanly.
     const viewToggle = document.getElementById('view-toggle');
     if (viewToggle) {
-        // Don't set textContent since it has an SVG image now
+        // Set initial SVG based on current view mode
+        const viewImg = viewToggle.querySelector('img');
+        if (viewImg) {
+            viewImg.src = VIEW_MODE === 'room' ? 'icons/SVG/room-3d.svg' : 'icons/SVG/room-flat.svg';
+        }
         viewToggle.addEventListener('click', () => {
             const next = VIEW_MODE === 'room' ? 'flat' : 'room';
             try { localStorage.setItem('viewMode', next); } catch (e) {}
