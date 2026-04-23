@@ -1246,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // View mode toggle (3D room <-> flat). Reload to re-init cleanly.
     const viewToggle = document.getElementById('view-toggle');
     if (viewToggle) {
-        viewToggle.textContent = VIEW_MODE === 'room' ? 'Flat' : '3D Room';
+        // Don't set textContent since it has an SVG image now
         viewToggle.addEventListener('click', () => {
             const next = VIEW_MODE === 'room' ? 'flat' : 'room';
             try { localStorage.setItem('viewMode', next); } catch (e) {}
@@ -1258,11 +1258,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const lockButton = document.getElementById('lock-button');
     lockButton.addEventListener('click', () => {
         isDraggingLocked = !isDraggingLocked;
+        const lockImg = lockButton.querySelector('img');
         if (isDraggingLocked) {
-            lockButton.textContent = '🔒 Locked';
+            if (lockImg) lockImg.src = 'icons/SVG/lock-closed.svg';
             lockButton.classList.add('locked');
         } else {
-            lockButton.textContent = '🔓 Unlock';
+            if (lockImg) lockImg.src = 'icons/SVG/lock-open.svg';
             lockButton.classList.remove('locked');
         }
     });
