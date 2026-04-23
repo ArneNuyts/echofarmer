@@ -77,8 +77,8 @@ body.flat-mode {
 
 #drive-knob .knob-dial {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     transform-origin: center;
@@ -299,10 +299,13 @@ body.room-mode #gif-container {
     display: none;
 }
 
-/* The table itself - extends below the visible frame area by --table-extra */
+/* The table itself.
+   min-height = scroller height + room depth → guarantees 800px of scroll room
+   so setupRoomScrollOpen() can drive --back-z from 0 to --depth. */
 #table-content {
     position: relative;
     width: 100%;
+    min-height: calc(100% + var(--depth, 800px));
     background: #a2927c;
 }
 
@@ -372,10 +375,14 @@ body.room-mode #gif-container {
     transform: scale(0.98);
 }
 
-/* Floor section: contains bio and links, part of the 3D room floor */
+/* Floor section: bio + links revealed at the bottom after full scroll.
+   position: absolute; bottom: 0 so it only comes into view when the user
+   has scrolled the full room depth (~800px). */
 .floor-section {
-    position: relative;
-    width: 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: 24px 16px;
     background: #a2927c;
     z-index: 6;
@@ -527,101 +534,13 @@ body.room-mode #gif-container {
     transform: scale(1.05);
 }
 
-/* Lock Button */
-.lock-button {
-    position: fixed;
-    top: 50px;
-    right: 50px;
-    z-index: 1000;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    border: 2px solid #333;
-    border-radius: 8px;
-    background-color: #fff;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.lock-button:hover {
-    background-color: #f0f0f0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.lock-button:active {
-    transform: scale(0.95);
-}
-
+/* Lock Button — icon-button in controls bar, no extra positioning */
 .lock-button.locked {
-    background-color: #ff6b6b;
-    color: #fff;
-    border-color: #ff6b6b;
+    opacity: 0.7;
 }
 
-/* View toggle (3D room <-> flat) */
-.view-toggle {
-    position: fixed;
-    top: 50px;
-    right: 160px;
-    z-index: 1000;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    border: 2px solid #333;
-    border-radius: 8px;
-    background-color: #fff;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.view-toggle:hover {
-    background-color: #f0f0f0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.view-toggle:active {
-    transform: scale(0.95);
-}
-
-#add-video {
-    display: none;
-    position: fixed;
-    top: 50px;
-    right: 80px;
-    z-index: 1000;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: bold;
-    border: 2px solid #333;
-    border-radius: 6px;
-    background-color: #fff;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-#add-video:hover {
-    background-color: #f0f0f0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-#add-video:active {
-    transform: scale(0.95);
-}
-
-/* Drive knob */
+/* Drive knob — sits inline in controls bar */
 .knob {
-    position: fixed;
-    top: 105px;
-    right: 50px;
-    z-index: 1000;
-    width: 60px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
@@ -629,12 +548,6 @@ body.room-mode #gif-container {
 }
 
 .knob-dial {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff 0%, #ddd 60%, #aaa 100%);
-    border: 2px solid #333;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     position: relative;
     transform: rotate(-135deg);
     transition: transform 0.05s linear;
