@@ -1495,3 +1495,6 @@ function createVideoPad() {
         try { pad.releasePointerCapture(e.pointerId); } catch (err) {}
     };
     pad.addEventListener('pointerup', endDrag);
+    let duration = 0;
+    let startTime = 0;
+    let isHeld = false;

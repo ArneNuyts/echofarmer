@@ -493,6 +493,7 @@ body.room-mode #gif-container {
 }
 
 #add-video {
+    display: none;
     position: fixed;
     top: 50px;
     right: 80px;
