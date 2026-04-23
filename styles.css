@@ -1,0 +1,797 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    position: relative;
+    background-color: #a2927c;
+    /* How far below the visible viewport the table extends.
+       Room mode: depth distance for the open animation + 60px links row.
+       Flat mode: a longer scrollable area. */
+    --table-extra: 660px;
+}
+
+body.flat-mode {
+    --table-extra: 600px;
+}
+
+/* Outer Frame (30px on all sides, #83735d) - acts as a layer on top of the table */
+#frame-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #83735d;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    z-index: 0;
+}
+
+/* Flat mode: hide the 3D room walls + neutralize perspective */
+body.flat-mode .room-walls {
+    display: none;
+}
+body.flat-mode #frame-inner {
+    perspective: none;
+}
+
+/* Room mode: hide the real back-wall grid canvas — the fake .wall-back
+   inside the perspective room takes over and renders as a smaller version
+   of the table due to z-translation. The colored header row stays at the
+   front (z=0) since flight lines on the ceiling jump off from its cells. */
+body.room-mode #grid-canvas {
+    display: none;
+}
+/* Make sure interactive layers (gifs, header colored cells, links) sit
+   on top of the room walls. */
+body.room-mode .room-walls {
+    z-index: 1;
+}
+body.room-mode #table-scroll {
+    z-index: 5;
+    pointer-events: auto;
+    background: transparent;
+}
+body.room-mode #table-content {
+    background: transparent;
+}
+body.room-mode .links-section {
+    z-index: 8;
+}
+body.room-mode .header-canvas {
+    z-index: 20;
+}
+body.room-mode #gif-container {
+    z-index: 10;
+}
+#frame-inner {
+    position: relative;
+    flex: 1;
+    border: 2px solid #5d5343;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #a2927c;
+    /* 3D room perspective. Vanishing point at center of the frame. */
+    --persp: 600px;
+    --depth: 800px;
+    /* Z-translation applied to the fake back wall. Animated 0 -> --depth
+       during the room-opening animation; the four side walls stay static. */
+    --back-z: var(--depth);
+    --cell-w: 70px;
+    --cell-h: 20px;
+    /* Line thickness for the room. Back-line is thicker so that after
+       perspective shrinks the back wall it still reads at ~1px. */
+    --line-w: 1px;
+    --back-line-w: 2px;
+    /* Tiled squares pattern (set from JS so cell sizes follow the table). */
+    --squares-bg: none;
+    perspective: var(--persp);
+    perspective-origin: 50% 50%;
+}
+
+/* 3D room layer: holds the four walls + a fake back wall.
+   Each wall hinges at one edge of the frame and rotates exactly 90° back,
+   so its far edge meets the back wall (which sits at z = -depth).
+   Perspective then naturally makes every wall-line that runs into depth
+   converge toward the vanishing point. */
+.room-walls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    transform-style: preserve-3d;
+}
+
+.wall {
+    position: absolute;
+    background-color: #a2927c;
+    backface-visibility: hidden;
+}
+
+.wall::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* Floor + ceiling: width = frame width, height = depth.
+   - Vertical lines (left/top edges of cells, every cell-w) are the FLIGHT LINES
+     coming from the boundaries of every colored cell in the top row.
+   - Horizontal lines (every cell-h) are equally-spaced depth markers. */
+.wall-floor, .wall-ceiling {
+    background-image:
+        var(--squares-bg),
+        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-w));
+}
+
+/* Side walls: height = frame height (minus colored top row), width (= depth) = depth.
+   - Horizontal lines (every cell-h) are flight lines coming from each row of
+     the back wall (= each horizontal grid line of the back wall).
+   - Vertical depth lines (every cell-h) line up with floor/ceiling depth markers
+     so the wall grids meet exactly at every corner. */
+.wall-left, .wall-right {
+    background-image:
+        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h));
+}
+
+.wall-floor {
+    left: 0; right: 0;
+    bottom: 0;
+    height: var(--depth);
+    transform-origin: 50% 100%;
+    transform: rotateX(90deg);
+}
+.wall-floor::after {
+    background: linear-gradient(to top, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+}
+
+.wall-ceiling {
+    left: 0; right: 0;
+    top: var(--cell-h);
+    height: var(--depth);
+    transform-origin: 50% 0%;
+    transform: rotateX(-90deg);
+}
+.wall-ceiling::after {
+    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+}
+
+.wall-left {
+    top: var(--cell-h); bottom: 0;
+    left: 0;
+    width: var(--depth);
+    transform-origin: 0% 50%;
+    transform: rotateY(90deg);
+}
+.wall-left::after {
+    background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+}
+
+.wall-right {
+    top: var(--cell-h); bottom: 0;
+    right: 0;
+    width: var(--depth);
+    transform-origin: 100% 50%;
+    transform: rotateY(-90deg);
+}
+.wall-right::after {
+    background: linear-gradient(to left, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+}
+
+/* Fake back wall: a flat copy of the table grid, pushed back in z so
+   perspective renders it as a smaller version of the table (with smaller cells).
+   Lines on it line up with the flight lines coming in from all four walls. */
+.wall-back {
+    position: absolute;
+    top: var(--cell-h);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #a2927c;
+    background-image:
+        var(--squares-bg),
+        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-w));
+    transform: translateZ(calc(0px - var(--back-z)));
+    backface-visibility: hidden;
+}
+
+/* Scrollable container for the table (native scrollbar hidden, custom one used) */
+#table-scroll {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+#table-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* The table itself - extends below the visible frame area by --table-extra */
+#table-content {
+    position: relative;
+    width: 100%;
+    height: calc(100% + var(--table-extra));
+    background: #a2927c;
+}
+
+/* Grid Canvas (covers the full table) */
+#grid-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+/* Header Row - sticky/fixed at the top of the frame, never scrolls */
+.header-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* GIF Container - lives inside the table, scrolls with it */
+#gif-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+
+/* Individual GIF Items */
+.gif-item {
+    position: absolute;
+    cursor: grab;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    touch-action: none;
+    transition: transform 0.1s ease;
+    /* Subtle drop shadow so they appear to float just above the table */
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+
+.gif-item:active {
+    cursor: grabbing;
+}
+
+.gif-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.gif-item:hover {
+    transform: scale(1.05);
+}
+
+.gif-item:active {
+    transform: scale(0.98);
+}
+
+/* Links Section: merged bottom rows of the table */
+.links-section {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    padding: 0 16px;
+    background: #a2927c;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 12px;
+}
+
+/* Custom scrollbar living inside the outer frame's right border */
+#custom-scrollbar {
+    position: fixed;
+    top: 30px;
+    bottom: 30px;
+    right: 11px;
+    width: 8px;
+    z-index: 50;
+    background: transparent;
+}
+
+#custom-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: #5d5343;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#custom-scrollbar-thumb:hover {
+    background: #4a4235;
+}
+
+.social-group,
+.music-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    gap: 12px;
+}
+
+.social-group {
+    justify-content: flex-start;
+}
+
+.music-group {
+    justify-content: flex-end;
+}
+
+.social-links {
+    list-style: none;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.social-links li {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #5d5343;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.icon-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: invert(1) brightness(0.7) saturate(0.3) hue-rotate(20deg);
+    transition: filter 0.2s ease;
+}
+
+.icon-link:hover img {
+    filter: invert(1) brightness(1) saturate(1);
+}
+
+.social-links a:not(.icon-link) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 12px;
+    background: white;
+    color: #5d5343;
+    text-decoration: none;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.social-links a:not(.icon-link):hover {
+    background: #5d5343;
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Lock Button */
+.lock-button {
+    position: fixed;
+    top: 50px;
+    right: 50px;
+    z-index: 1000;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.lock-button:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.lock-button:active {
+    transform: scale(0.95);
+}
+
+.lock-button.locked {
+    background-color: #ff6b6b;
+    color: #fff;
+    border-color: #ff6b6b;
+}
+
+/* View toggle (3D room <-> flat) */
+.view-toggle {
+    position: fixed;
+    top: 50px;
+    right: 160px;
+    z-index: 1000;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.view-toggle:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.view-toggle:active {
+    transform: scale(0.95);
+}
+
+#add-video {
+    position: fixed;
+    top: 50px;
+    right: 80px;
+    z-index: 1000;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid #333;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+#add-video:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+#add-video:active {
+    transform: scale(0.95);
+}
+
+/* Drive knob */
+.knob {
+    position: fixed;
+    top: 105px;
+    right: 50px;
+    z-index: 1000;
+    width: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    cursor: ns-resize;
+}
+
+.knob-dial {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff 0%, #ddd 60%, #aaa 100%);
+    border: 2px solid #333;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    position: relative;
+    transform: rotate(-135deg);
+    transition: transform 0.05s linear;
+}
+
+.knob-indicator {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 14px;
+    background: #333;
+    border-radius: 2px;
+}
+
+.knob.active .knob-dial {
+    border-color: #f5a623;
+    box-shadow: 0 0 8px rgba(245, 166, 35, 0.6);
+}
+
+.knob-label {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.6);
+}
+
+/* Video sampler pad */
+.video-pad {
+    position: fixed;
+    top: 50px;
+    left: 50px;
+    z-index: 1000;
+    width: 280px;
+    background: #83735d;
+    border: 2px solid #5d5343;
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    font-family: inherit;
+    color: #f5ecd9;
+    cursor: move;
+    touch-action: none;
+}
+
+.video-url {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    border: 1px solid #5d5343;
+    border-radius: 3px;
+    background: #a2927c;
+    color: #2a241a;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+}
+.video-url::placeholder { color: rgba(42,36,26,0.55); }
+.video-url:focus { border-color: #f5a623; }
+
+.video-stage {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.video-el,
+.video-yt {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    border: 0;
+}
+.video-el { pointer-events: none; }
+.video-yt iframe { width: 100%; height: 100%; border: 0; background: #000; }
+.video-el[hidden],
+.video-yt[hidden] { display: none; }
+
+.video-scrub-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.video-scrub {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #5d5343;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+.video-scrub::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #f5ecd9;
+    border: 1px solid #2a241a;
+    cursor: pointer;
+}
+.video-scrub::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #f5ecd9;
+    border: 1px solid #2a241a;
+    cursor: pointer;
+}
+
+.video-time {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: #f5ecd9;
+    min-width: 70px;
+    text-align: right;
+}
+
+.video-vol-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.video-vol-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: #f5ecd9;
+    min-width: 24px;
+}
+.video-vol {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #5d5343;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+.video-vol::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #f5ecd9;
+    border: 1px solid #2a241a;
+    cursor: pointer;
+}
+.video-vol::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #f5ecd9;
+    border: 1px solid #2a241a;
+    cursor: pointer;
+}
+
+.video-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #5d5343;
+    border-radius: 3px;
+    background: #5d5343;
+    color: #f5ecd9;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+.video-close:hover {
+    background: #6d6353;
+    border-color: #6d6353;
+}
+
+.video-pad-row {
+    display: flex;
+    gap: 8px;
+}
+
+.video-key {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    border: 1px solid #5d5343;
+    border-radius: 3px;
+    background: #a2927c;
+    color: #2a241a;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+.video-key.binding {
+    background: #f5a623;
+    border-color: #f5a623;
+}
+
+.video-trigger {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #5d5343;
+    border-radius: 3px;
+    background: #5d5343;
+    color: #f5ecd9;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    font-family: inherit;
+}
+.video-trigger.active {
+    background: #f5a623;
+    color: #2a241a;
+    border-color: #f5a623;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .social-links {
+        gap: 8px;
+    }
+    
+    .social-links a {
+        font-size: 0.8em;
+        padding: 5px 10px;
+    }
+    
+    .gif-item {
+        touch-action: none;
+    }
+}
+
+/* Preload images - prevents flickering */
+.gif-item.preloaded {
+    opacity: 1;
+}
