@@ -286,8 +286,8 @@ const GRID_CELL_WIDTH_DEFAULT = 70;
 const GRID_CELL_HEIGHT_DEFAULT = 20;
 const GRID_LINE_WIDTH = 1;
 const SQUARE_SIZE = 9;
-const GRID_COLOR = 'rgb(93, 83, 67)';
-const BACKGROUND_COLOR = '#a2927c';
+const GRID_COLOR = 'rgb(89, 81, 71)';
+const BACKGROUND_COLOR = '#9b9183';
 
 // Calculate responsive cell dimensions.
 // Cell sizes are NOT rounded so that frameWidth = cols * cellWidth (and
@@ -307,10 +307,20 @@ function getResponsiveCellDimensions() {
 
 // Header row colors (rotating palette)
 const HEADER_COLORS = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#7FDBCA',
-    '#FF9999', '#66C2A5', '#FC8D62', '#8DA0CB', '#E78AC3'
+    '#eba0ab', '#e7a64e', '#bd9643', '#c2e84c',
+    '#9ec4f2', '#6b84ce',
+    '#c77cd1', '#ce6799', '#ffffff', '#e055c6', '#b081b4',
+    '#4e9dd5', '#6bd9ea', '#51afa2',
+    '#65b437', '#f0e460', '#d87631',
+    '#e0534a', '#cd7766', '#eaa984', ,
+    '#bec880', '#d8eef2',
+    '#cec0da',
 ];
+
+// Pre-generate cell labels ("1 Audio", "2 MIDI", ...) so they stay stable across redraws.
+const CELL_LABELS = Array.from({ length: 200 }, (_, i) =>
+    `${i + 1} ${Math.random() < 0.5 ? 'Audio' : 'MIDI'}`
+);
 
 // Draw the main grid
 function drawGrid() {
@@ -395,31 +405,49 @@ function drawHeaderRow() {
     
     // Draw header cells with different colors
     ctx.lineWidth = GRID_LINE_WIDTH;
+    // Shuffle a copy of the palette so each color is used at most once
+    const shuffledColors = HEADER_COLORS.slice().sort(() => Math.random() - 0.5);
+    let colorIdx = 0;
     
-    let colorIndex = 0;
     for (let x = 0; x < width; x += cellWidth) {
-        // Get color for this cell
-        const cellColor = HEADER_COLORS[colorIndex % HEADER_COLORS.length];
-        ctx.fillStyle = cellColor;
+        // Cycle through shuffled palette if more cells than colors (shouldn't happen)
+        if (colorIdx >= shuffledColors.length) {
+            colorIdx = 0;
+        }
+        ctx.fillStyle = shuffledColors[colorIdx++];
         
         // Draw colored cell fill (pixel-aligned)
         ctx.fillRect(Math.floor(x), 0, Math.ceil(cellWidth), height);
-        
-        colorIndex++;
     }
     
-    // Draw vertical separators with crisp lines
+    // Draw labels inside each cell (left-aligned, vertically centred, smaller size)
+    const fontSize = Math.max(8, Math.floor(height * 0.40)) + 1;
+    ctx.font = `700 ${fontSize}px "Geist", sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#1b1916';
+    const pad = 4;
+    let labelIndex = 0;
+    for (let x = 0; x < width; x += cellWidth) {
+        const label = CELL_LABELS[labelIndex % CELL_LABELS.length];
+        ctx.fillText(label, Math.floor(x) + pad, height / 2, Math.ceil(cellWidth) - pad * 2);
+        labelIndex++;
+    }
+
+    // Draw vertical separators with crisp lines — use exact float positions to match
+    // the CSS repeating-linear-gradient(--cell-w) which also uses fractional values.
     ctx.strokeStyle = GRID_COLOR;
+    ctx.lineWidth = GRID_LINE_WIDTH;
     ctx.beginPath();
     for (let x = 0; x <= width; x += cellWidth) {
-        const px = Math.floor(x) + 0.5;
-        ctx.moveTo(px, 0);
-        ctx.lineTo(px, height);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
     }
-    // Bottom border of header
-    const py = Math.floor(height) - 0.5;
-    ctx.moveTo(0, py);
-    ctx.lineTo(width, py);
+    ctx.stroke();
+    // Bottom border of header — 0.5px thicker than the grid lines
+    ctx.beginPath();
+    ctx.lineWidth = GRID_LINE_WIDTH + 1;
+    ctx.moveTo(0, height);
+    ctx.lineTo(width, height);
     ctx.stroke();
 }
 
@@ -548,12 +576,25 @@ window.addEventListener('resize', scheduleGridRedraw);
 // Initialize on load
 initializeGrid();
 
-// Custom scrollbar living in the outer frame's right border
+// Custom scrollbar living in the outer frame's right border, below the controls-bar
 function setupCustomScrollbar() {
     const scroller = document.getElementById('table-scroll');
     const bar = document.getElementById('custom-scrollbar');
     const thumb = document.getElementById('custom-scrollbar-thumb');
     if (!scroller || !bar || !thumb) return;
+
+    // Position scrollbar track and right-panel just below the controls-bar
+    const positionBar = () => {
+        const controlsBar = document.getElementById('controls-bar');
+        const rightPanel = document.getElementById('right-panel');
+        if (controlsBar) {
+            const bottom = controlsBar.getBoundingClientRect().bottom;
+            if (rightPanel) rightPanel.style.top = (bottom + 4) + 'px';
+            bar.style.top = (bottom + 15) + 'px';  // 4px gap to panel + 11px inset
+        }
+    };
+    positionBar();
+    window.addEventListener('resize', positionBar);
 
     const update = () => {
         const visible = scroller.clientHeight;
@@ -575,6 +616,7 @@ function setupCustomScrollbar() {
 
     scroller.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', () => requestAnimationFrame(update));
+    window.addEventListener('load', () => requestAnimationFrame(update));
 
     // Drag the thumb
     let dragging = false;
@@ -584,6 +626,7 @@ function setupCustomScrollbar() {
         dragging = true;
         dragStartY = clientY;
         dragStartScroll = scroller.scrollTop;
+        thumb.classList.add('dragging');
         if (e) e.preventDefault();
     };
     thumb.addEventListener('mousedown', (e) => onThumbDown(e.clientY, e));
@@ -600,8 +643,8 @@ function setupCustomScrollbar() {
     };
     document.addEventListener('mousemove', (e) => onMove(e.clientY));
     document.addEventListener('touchmove', (e) => { if (dragging) { e.preventDefault(); onMove(e.touches[0].clientY); } }, { passive: false });
-    document.addEventListener('mouseup', () => { dragging = false; });
-    document.addEventListener('touchend', () => { dragging = false; });
+    document.addEventListener('mouseup', () => { dragging = false; thumb.classList.remove('dragging'); });
+    document.addEventListener('touchend', () => { dragging = false; thumb.classList.remove('dragging'); });
 
     // Click track to jump
     bar.addEventListener('mousedown', (e) => {
@@ -616,6 +659,31 @@ function setupCustomScrollbar() {
     });
 
     requestAnimationFrame(update);
+}
+
+// Setup SVG hover state swapping between normal and hover versions
+function setupSvgHoverStates() {
+    // All elements with SVG images from the SVG-STATES/NORMAL folder
+    // Exclude the lock button — its hover is handled separately in the lock handler
+    const svgElements = document.querySelectorAll('img[src*="SVG-STATES/NORMAL/"]');
+    
+    svgElements.forEach(img => {
+        const hoverElement = img.closest('button') || img.closest('a') || img.closest('.knob-dial') || img.parentElement;
+        if (!hoverElement) return;
+        
+        // Lock button excluded: its src changes on click, generic mouseleave would reset it
+        if (hoverElement.id === 'lock-button') return;
+        
+        const normalSrc = img.src;
+        const hoverSrc = normalSrc.replace('SVG-STATES/NORMAL/', 'SVG-STATES/HOVER/');
+        
+        // Preload hover image
+        const preload = new Image();
+        preload.src = hoverSrc;
+        
+        hoverElement.addEventListener('mouseenter', () => { img.src = hoverSrc; });
+        hoverElement.addEventListener('mouseleave', () => { img.src = normalSrc; });
+    });
 }
 
 class GifSampler {
@@ -1079,7 +1147,6 @@ class GifSampler {
             const rect = element.getBoundingClientRect();
             const offsetX = e.clientX - rect.left;
             const offsetY = e.clientY - rect.top;
-            const MARGIN = 20;
 
             const onMouseMove = (e) => {
                 // Check if dragging is locked
@@ -1095,15 +1162,6 @@ class GifSampler {
                     
                     let newLeft = e.clientX - frameRect.left - offsetX;
                     let newTop = e.clientY - frameRect.top - offsetY;
-                    
-                    // Constrain with 20px margin
-                    const minLeft = MARGIN;
-                    const maxLeft = frameRect.width - element.offsetWidth - MARGIN;
-                    const minTop = MARGIN;
-                    const maxTop = frameRect.height - element.offsetHeight - MARGIN;
-                    
-                    newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
-                    newTop = Math.max(minTop, Math.min(maxTop, newTop));
                     
                     element.style.left = newLeft + 'px';
                     element.style.top = newTop + 'px';
@@ -1159,7 +1217,6 @@ class GifSampler {
                 
                 e.preventDefault();
                 const touch = e.touches[0];
-                const MARGIN = 20;
                 
                 const deltaX = touch.clientX - gifData.touchStartX;
                 const deltaY = touch.clientY - gifData.touchStartY;
@@ -1175,15 +1232,6 @@ class GifSampler {
                     
                     let newLeft = gifData.elementStartX - frameRect.left + deltaX;
                     let newTop = gifData.elementStartY - frameRect.top + deltaY;
-                    
-                    // Constrain with 20px margin
-                    const minLeft = MARGIN;
-                    const maxLeft = frameRect.width - element.offsetWidth - MARGIN;
-                    const minTop = MARGIN;
-                    const maxTop = frameRect.height - element.offsetHeight - MARGIN;
-                    
-                    newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
-                    newTop = Math.max(minTop, Math.min(maxTop, newTop));
                     
                     element.style.left = newLeft + 'px';
                     element.style.top = newTop + 'px';
@@ -1258,9 +1306,21 @@ document.addEventListener('DOMContentLoaded', () => {
     new GifSampler(samplerConfig);
     setupCustomScrollbar();
 
+    // Setup SVG hover state swapping
+    setupSvgHoverStates();
+
     // In room mode, scrolling drives the back-wall depth (room "opens" as you scroll).
     if (VIEW_MODE === 'room') {
         requestAnimationFrame(() => setupRoomScrollOpen());
+    }
+
+    // Forward wheel events from anywhere on the page to the scroller
+    const scroller = document.getElementById('table-scroll');
+    if (scroller) {
+        window.addEventListener('wheel', (e) => {
+            scroller.scrollTop += e.deltaY;
+            e.preventDefault();
+        }, { passive: false });
     }
 
     // View mode toggle (3D room <-> flat). Reload to re-init cleanly.
@@ -1269,7 +1329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set initial SVG based on current view mode
         const viewImg = viewToggle.querySelector('img');
         if (viewImg) {
-            viewImg.src = VIEW_MODE === 'room' ? 'icons/SVG/room-3d.svg' : 'icons/SVG/room-flat.svg';
+            viewImg.src = VIEW_MODE === 'room' ? 'icons/SVG-STATES/NORMAL/room-3D.svg' : 'icons/SVG-STATES/NORMAL/room-flat.svg';
         }
         viewToggle.addEventListener('click', () => {
             const next = VIEW_MODE === 'room' ? 'flat' : 'room';
@@ -1278,16 +1338,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Setup lock button
+    // Setup lock button — start unlocked (yellow open icon)
     const lockButton = document.getElementById('lock-button');
+    const lockImg = lockButton.querySelector('img');
+    if (lockImg) lockImg.src = 'icons/SVG-STATES/NORMAL/lock-open-yellow.svg';
+
+    // Lock hover: orange when locked, yellow when unlocked
+    lockButton.addEventListener('mouseenter', () => {
+        if (lockImg) lockImg.src = isDraggingLocked
+            ? 'icons/SVG-STATES/HOVER/lock-closed.svg'
+            : 'icons/SVG-STATES/HOVER/lock-open.svg';
+    });
+    lockButton.addEventListener('mouseleave', () => {
+        if (lockImg) lockImg.src = isDraggingLocked
+            ? 'icons/SVG-STATES/NORMAL/lock-closed-orange.svg'
+            : 'icons/SVG-STATES/NORMAL/lock-open-yellow.svg';
+    });
     lockButton.addEventListener('click', () => {
         isDraggingLocked = !isDraggingLocked;
-        const lockImg = lockButton.querySelector('img');
         if (isDraggingLocked) {
-            if (lockImg) lockImg.src = 'icons/SVG/lock-closed.svg';
+            if (lockImg) lockImg.src = 'icons/SVG-STATES/NORMAL/lock-closed-orange.svg';
             lockButton.classList.add('locked');
         } else {
-            if (lockImg) lockImg.src = 'icons/SVG/lock-open.svg';
+            if (lockImg) lockImg.src = 'icons/SVG-STATES/NORMAL/lock-open-yellow.svg';
             lockButton.classList.remove('locked');
         }
     });
@@ -1296,8 +1369,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const driveKnob = document.getElementById('drive-knob');
     if (driveKnob) {
         const dial = driveKnob.querySelector('.knob-dial');
-        const MIN_ANGLE = -135;
-        const MAX_ANGLE = 135;
+        const MIN_ANGLE = 0;
+        const MAX_ANGLE = 270;
         let amount = 0;
 
         const applyAmount = (a) => {

@@ -7,9 +7,10 @@
 body {
     min-height: 100vh;
     overflow: hidden;
-    font-family: 'Arial', sans-serif;
+    font-family: "Geist", sans-serif;
+    font-weight: 450;
     position: relative;
-    background-color: #a2927c;
+    background-color: #9b9183;
     /* How far below the visible viewport the table extends.
        Room mode: depth distance for the open animation + 60px links row.
        Flat mode: a longer scrollable area. */
@@ -20,29 +21,38 @@ body.flat-mode {
     --table-extra: 600px;
 }
 
-/* Floating vertical action bar on the right edge of the screen.
-   30px wide, auto height, fixed position so it stays put while scrolling. */
+#right-panel {
+    position: fixed;
+    right: 6px;
+    top: 30px;
+    bottom: 30px;
+    width: 24px;
+    background: #595147;
+    border-radius: 0px 5px 5px 0px;
+    z-index: 90;
+    pointer-events: none;
+}
+
+/* Action icons box: matches the frame background so it looks part of the frame. */
 #controls-bar {
     position: fixed;
-    top: 50%;
-    right: 8px;
-    transform: translateY(-50%);
-    width: 30px;
+    top: 23px;
+    right: 4.5px;
+    width: 24px;
+    background: #7c7164;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 6px 3px;
-    background: #a2927c;
-    border: 1px solid #5d5343;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    padding: 8px 2px;
+    border: none;
+    border-radius: 5px;
     z-index: 100;
 }
 
 .icon-button {
-    width: 24px;
-    height: 24px;
+    width: 19.5px;
+    height: 19.5px;
     padding: 2px;
     border: none;
     background: transparent;
@@ -50,16 +60,22 @@ body.flat-mode {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.2s ease;
+    transition: transform 0.15s ease;
     border-radius: 4px;
 }
 
 .icon-button:hover {
-    opacity: 0.8;
+    transform: scale(1.07);
 }
 
 .icon-button:active {
     opacity: 0.6;
+}
+
+#lock-button img,
+#view-toggle img,
+#add-video img {
+    transform: scale(1.3);
 }
 
 .icon-button img {
@@ -88,14 +104,15 @@ body.flat-mode {
     pointer-events: none;
 }
 
+#drive-knob .knob-dial img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
 #drive-knob .knob-indicator {
-    position: absolute;
-    top: -2px;
-    left: 50%;
-    width: 2px;
-    height: 6px;
-    background: #333;
-    transform: translateX(-50%);
+    display: none;
 }
 
 #frame-wrapper {
@@ -104,7 +121,7 @@ body.flat-mode {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: #83735d;
+    background-color: #7c7164;
     padding: 30px;
     display: flex;
     flex-direction: column;
@@ -151,10 +168,10 @@ body.room-mode #gif-container {
 #frame-inner {
     position: relative;
     flex: 1;
-    border: 2px solid #5d5343;
-    border-radius: 5px;
+    border: 2px solid #595147;
+    border-radius: 5px 5px 0px 5px;
     overflow: hidden;
-    background: #a2927c;
+    background: #9b9183;
     /* 3D room perspective. Vanishing point at center of the frame. */
     --persp: 600px;
     --depth: 800px;
@@ -188,7 +205,7 @@ body.room-mode #gif-container {
 
 .wall {
     position: absolute;
-    background-color: #a2927c;
+    background-color: #9b9183;
     backface-visibility: hidden;
 }
 
@@ -206,8 +223,8 @@ body.room-mode #gif-container {
 .wall-floor, .wall-ceiling {
     background-image:
         var(--squares-bg),
-        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
-        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-w));
+        repeating-linear-gradient(0deg,  #595147 0, #595147 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #595147 0, #595147 var(--line-w), transparent var(--line-w), transparent var(--cell-w));
 }
 
 /* Side walls: height = frame height (minus colored top row), width (= depth) = depth.
@@ -217,8 +234,8 @@ body.room-mode #gif-container {
      so the wall grids meet exactly at every corner. */
 .wall-left, .wall-right {
     background-image:
-        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
-        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--line-w), transparent var(--line-w), transparent var(--cell-h));
+        repeating-linear-gradient(0deg,  #595147 0, #595147 var(--line-w), transparent var(--line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #595147 0, #595147 var(--line-w), transparent var(--line-w), transparent var(--cell-h));
 }
 
 .wall-floor {
@@ -270,15 +287,15 @@ body.room-mode #gif-container {
    Lines on it line up with the flight lines coming in from all four walls. */
 .wall-back {
     position: absolute;
-    top: var(--cell-h);
+    top: calc(var(--cell-h) - 1px);
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: #a2927c;
+    background-color: #9b9183;
     background-image:
         var(--squares-bg),
-        repeating-linear-gradient(0deg,  #5d5343 0, #5d5343 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-h)),
-        repeating-linear-gradient(90deg, #5d5343 0, #5d5343 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-w));
+        repeating-linear-gradient(0deg,  #595147 0, #595147 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-h)),
+        repeating-linear-gradient(90deg, #595147 0, #595147 var(--back-line-w), transparent var(--back-line-w), transparent var(--cell-w));
     transform: translateZ(calc(0px - var(--back-z)));
     backface-visibility: hidden;
 }
@@ -309,7 +326,7 @@ body.room-mode #gif-container {
     position: relative;
     width: 100%;
     min-height: calc(100% + var(--depth, 800px) + var(--floor-h, 0px));
-    background: #a2927c;
+    background: #9b9183;
 }
 
 /* Grid Canvas (covers the full table) */
@@ -381,7 +398,7 @@ body.room-mode #gif-container {
     transform: scale(0.98);
 }
 
-/* Floor section: 4-part grid layout. Sits BELOW the visible frame (top: 100%).
+/*  section: 4-part grid layout. Sits BELOW the visible frame (top: 100%).
    In phase 2 of the room-open scroll, JS translateY's it up so its top edge
    stays glued to the bottom of the room (the near edge of the floor). */
 .floor-section {
@@ -389,16 +406,20 @@ body.room-mode #gif-container {
     top: 100%;
     left: 0;
     right: 0;
-    padding: 24px 16px;
-    background: #a2927c;
+    padding: 30px;
+    background: #b3aba0;
+    border-style: solid;
+    border-width: 1.5px 0px 0px 0px;
+    border-color: #595147;
     z-index: 6;
     pointer-events: auto;
     will-change: transform;
     
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
+    gap: 30px;
     align-items: start;
+    font-size: 13px;
 }
 
 /* Individual floor parts */
@@ -410,9 +431,9 @@ body.room-mode #gif-container {
 }
 
 .floor-heading {
-    font-size: 14px;
-    font-weight: 600;
-    color: #4a4235;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4c453d;
     margin: 0;
     padding: 0;
     text-transform: uppercase;
@@ -421,9 +442,8 @@ body.room-mode #gif-container {
 
 /* Bio section */
 .bio {
-    font-size: 14px;
     line-height: 1.6;
-    color: #333;
+    color: #1b1916;
     text-align: left;
     pointer-events: auto;
 }
@@ -444,17 +464,15 @@ body.room-mode #gif-container {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 14px;
 }
 
 .release-date {
-    font-weight: 600;
-    color: #4a4235;
+    font-weight: 700;
+    color: #4c453d;
 }
 
 .release-title {
-    color: #333;
-    font-size: 13px;
+    color: #1b1916;
 }
 
 /* Shows section */
@@ -468,55 +486,51 @@ body.room-mode #gif-container {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 13px;
-    border-left: 2px solid #5d5343;
+    border-left: 2px solid #595147;
     padding-left: 10px;
 }
 
 .show-date {
-    font-weight: 600;
-    color: #4a4235;
-    font-size: 12px;
+    font-weight: 700;
+    color: #4c453d;
 }
 
 .show-venue {
-    color: #333;
+    color: #1b1916;
 }
 
 .show-venue a {
-    color: #333;
+    color: #1b1916;
     text-decoration: none;
-    border-bottom: 1px dotted #5d5343;
+    border-bottom: 1px dotted #595147;
     transition: color 0.2s ease;
 }
 
 .show-venue a:hover {
-    color: #4a4235;
-    border-bottom-color: #4a4235;
+    color: #4c453d;
+    border-bottom-color: #4c453d;
 }
 
 .show-location {
-    color: #5d5343;
-    font-size: 12px;
+    color: #595147;
 }
 
 .btn-bandsintown {
     display: inline-block;
     padding: 8px 12px;
-    background: #4a4235;
-    color: #a2927c;
+    background: #4c453d;
+    color: #9b9183;
     text-decoration: none;
-    font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 1px solid #4a4235;
+    border: 0px solid #4c453d;
 }
 
 .btn-bandsintown:hover {
-    background: #a2927c;
-    color: #4a4235;
+    background: #dfdcd8;
+    color: #4c453d;
 }
 
 /* Links Section: merged bottom rows of the table */
@@ -524,8 +538,8 @@ body.room-mode #gif-container {
     position: relative;
     width: 100%;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-start;
     flex-direction: column;
     gap: 12px;
     padding: 0;
@@ -533,15 +547,18 @@ body.room-mode #gif-container {
     z-index: 4;
 }
 
-/* Custom scrollbar living inside the outer frame's right border */
+/* Custom scrollbar inside the right panel, centered in the 24px zone.
+   right: 6 + (24-8)/2 = 14px centres the 8px thumb in the panel.
+   top is set dynamically via JS to sit just below the controls-bar.
+   z-index: 101 ensures it sits above the panel (90) and controls-bar (100). */
 #custom-scrollbar {
     position: fixed;
-    top: 30px;
-    bottom: 30px;
-    right: 11px;
+    top: 41px;  /* fallback; overridden by JS to right-panel.top + 11px */
+    bottom: 41px;
+    right: 14px;
     width: 8px;
-    z-index: 50;
-    background: transparent;
+    z-index: 101;
+    border-radius: 0px 5px 5px 0px;
 }
 
 #custom-scrollbar-thumb {
@@ -550,14 +567,15 @@ body.room-mode #gif-container {
     left: 0;
     width: 100%;
     height: 40px;
-    background: #5d5343;
+    background: #9b9183;
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.15s ease;
 }
 
-#custom-scrollbar-thumb:hover {
-    background: #4a4235;
+#custom-scrollbar-thumb:hover,
+#custom-scrollbar-thumb.dragging {
+    background: #dfdcd8;
 }
 
 .social-group,
@@ -567,7 +585,7 @@ body.room-mode #gif-container {
     flex-shrink: 0;
     flex-wrap: wrap;
     gap: 10px;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .social-links {
@@ -601,21 +619,20 @@ body.room-mode #gif-container {
     padding: 0;
     transition: all 0.2s ease;
     text-decoration: none;
-    color: #5d5343;
+    color: #595147;
     font-size: 0.8em;
-    font-weight: bold;
+    font-weight: 800;
 }
 
 .icon-link img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: invert(1) brightness(0.7) saturate(0.3) hue-rotate(20deg);
-    transition: filter 0.2s ease;
+    transition: transform 0.15s ease;
 }
 
 .icon-link:hover img {
-    filter: invert(1) brightness(1) saturate(1);
+    transform: scale(1.1);
 }
 
 .social-links a:not(.icon-link) {
@@ -625,10 +642,10 @@ body.room-mode #gif-container {
     height: 30px;
     padding: 0 12px;
     background: white;
-    color: #5d5343;
+    color: #595147;
     text-decoration: none;
     font-size: 0.8em;
-    font-weight: bold;
+    font-weight: 800;
     border-radius: 8px;
     border: none;
     transition: all 0.2s ease;
@@ -636,7 +653,7 @@ body.room-mode #gif-container {
 }
 
 .social-links a:not(.icon-link):hover {
-    background: #5d5343;
+    background: #595147;
     color: white;
     transform: scale(1.05);
 }
@@ -656,31 +673,21 @@ body.room-mode #gif-container {
 
 .knob-dial {
     position: relative;
-    transform: rotate(-135deg);
+    transform: rotate(0deg);
     transition: transform 0.05s linear;
 }
 
 .knob-indicator {
-    position: absolute;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    height: 14px;
-    background: #333;
-    border-radius: 2px;
+    display: none;
 }
 
-.knob.active .knob-dial {
-    border-color: #f5a623;
-    box-shadow: 0 0 8px rgba(245, 166, 35, 0.6);
-}
+
 
 .knob-label {
     margin-top: 4px;
     font-size: 12px;
-    font-weight: bold;
-    color: #333;
+    font-weight: 800;
+    color: #1b1916;
     text-shadow: 0 1px 2px rgba(255,255,255,0.6);
 }
 
@@ -691,8 +698,8 @@ body.room-mode #gif-container {
     left: 50px;
     z-index: 1000;
     width: 280px;
-    background: #83735d;
-    border: 2px solid #5d5343;
+    background: #7c7164;
+    border: 2px solid #595147;
     border-radius: 6px;
     padding: 10px;
     display: flex;
@@ -700,7 +707,7 @@ body.room-mode #gif-container {
     gap: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.25);
     font-family: inherit;
-    color: #f5ecd9;
+    color: #dfdcd8;
     cursor: move;
     touch-action: none;
 }
@@ -709,10 +716,10 @@ body.room-mode #gif-container {
     width: 100%;
     box-sizing: border-box;
     padding: 6px 8px;
-    border: 1px solid #5d5343;
+    border: 1px solid #595147;
     border-radius: 3px;
-    background: #a2927c;
-    color: #2a241a;
+    background: #9b9183;
+    color: #1b1916;
     font-size: 12px;
     font-family: inherit;
     outline: none;
@@ -754,7 +761,7 @@ body.room-mode #gif-container {
     -webkit-appearance: none;
     appearance: none;
     height: 6px;
-    background: #5d5343;
+    background: #595147;
     border-radius: 3px;
     outline: none;
     cursor: pointer;
@@ -764,23 +771,23 @@ body.room-mode #gif-container {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #f5ecd9;
-    border: 1px solid #2a241a;
+    background: #dfdcd8;
+    border: 1px solid #1b1916;
     cursor: pointer;
 }
 .video-scrub::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #f5ecd9;
-    border: 1px solid #2a241a;
+    background: #dfdcd8;
+    border: 1px solid #1b1916;
     cursor: pointer;
 }
 
 .video-time {
     font-size: 11px;
     font-variant-numeric: tabular-nums;
-    color: #f5ecd9;
+    color: #dfdcd8;
     min-width: 70px;
     text-align: right;
 }
@@ -792,8 +799,8 @@ body.room-mode #gif-container {
 }
 .video-vol-label {
     font-size: 10px;
-    font-weight: bold;
-    color: #f5ecd9;
+    font-weight: 800;
+    color: #dfdcd8;
     min-width: 24px;
 }
 .video-vol {
@@ -801,7 +808,7 @@ body.room-mode #gif-container {
     -webkit-appearance: none;
     appearance: none;
     height: 6px;
-    background: #5d5343;
+    background: #595147;
     border-radius: 3px;
     outline: none;
     cursor: pointer;
@@ -811,16 +818,16 @@ body.room-mode #gif-container {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #f5ecd9;
-    border: 1px solid #2a241a;
+    background: #dfdcd8;
+    border: 1px solid #1b1916;
     cursor: pointer;
 }
 .video-vol::-moz-range-thumb {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #f5ecd9;
-    border: 1px solid #2a241a;
+    background: #dfdcd8;
+    border: 1px solid #1b1916;
     cursor: pointer;
 }
 
@@ -831,12 +838,12 @@ body.room-mode #gif-container {
     width: 24px;
     height: 24px;
     padding: 0;
-    border: 1px solid #5d5343;
+    border: 1px solid #595147;
     border-radius: 3px;
-    background: #5d5343;
-    color: #f5ecd9;
+    background: #595147;
+    color: #dfdcd8;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 800;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -844,8 +851,8 @@ body.room-mode #gif-container {
     z-index: 10;
 }
 .video-close:hover {
-    background: #6d6353;
-    border-color: #6d6353;
+    background: #595147;
+    border-color: #595147;
 }
 
 .video-pad-row {
@@ -856,12 +863,12 @@ body.room-mode #gif-container {
 .video-key {
     flex: 0 0 auto;
     padding: 8px 10px;
-    border: 1px solid #5d5343;
+    border: 1px solid #595147;
     border-radius: 3px;
-    background: #a2927c;
-    color: #2a241a;
+    background: #9b9183;
+    color: #1b1916;
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 800;
     cursor: pointer;
     font-family: inherit;
 }
@@ -873,12 +880,12 @@ body.room-mode #gif-container {
 .video-trigger {
     flex: 1;
     padding: 12px;
-    border: 1px solid #5d5343;
+    border: 1px solid #595147;
     border-radius: 3px;
-    background: #5d5343;
-    color: #f5ecd9;
+    background: #595147;
+    color: #dfdcd8;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 800;
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
@@ -887,7 +894,7 @@ body.room-mode #gif-container {
 }
 .video-trigger.active {
     background: #f5a623;
-    color: #2a241a;
+    color: #1b1916;
     border-color: #f5a623;
 }
 
@@ -911,15 +918,6 @@ body.room-mode #gif-container {
         padding: 12px 8px;
     }
     
-    .floor-heading {
-        font-size: 12px;
-    }
-    
-    .bio,
-    .release-item,
-    .show-item {
-        font-size: 13px;
-    }
 }
 
 /* Preload images - prevents flickering */
