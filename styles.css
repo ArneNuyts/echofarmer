@@ -20,27 +20,30 @@ body.flat-mode {
     --table-extra: 600px;
 }
 
-/* Outer Frame (30px on all sides, #83735d) - acts as a layer on top of the table */
-/* Control buttons at top of frame */
+/* Floating vertical action bar on the right edge of the screen.
+   30px wide, auto height, fixed position so it stays put while scrolling. */
 #controls-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
+    position: fixed;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 30px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 6px 3px;
     background: #a2927c;
-    z-index: 25;
-    border-bottom: 1px solid #5d5343;
+    border: 1px solid #5d5343;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    z-index: 100;
 }
 
 .icon-button {
-    width: 36px;
-    height: 36px;
-    padding: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 2px;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -283,10 +286,10 @@ body.room-mode #gif-container {
 /* Scrollable container for the table (native scrollbar hidden, custom one used) */
 #table-scroll {
     position: absolute;
-    top: 60px;
+    top: 0;
     left: 0;
     width: 100%;
-    height: calc(100% - 60px);
+    height: 100%;
     overflow-y: scroll;
     overflow-x: hidden;
     scrollbar-width: none; /* Firefox */
@@ -300,12 +303,12 @@ body.room-mode #gif-container {
 }
 
 /* The table itself.
-   min-height = scroller height + room depth → guarantees 800px of scroll room
-   so setupRoomScrollOpen() can drive --back-z from 0 to --depth. */
+   min-height = scroller height + room depth + floor section height → enough
+   scroll for room-opening (phase 1) and room slide-up (phase 2). */
 #table-content {
     position: relative;
     width: 100%;
-    min-height: calc(100% + var(--depth, 800px));
+    min-height: calc(100% + var(--depth, 800px) + var(--floor-h, 0px));
     background: #a2927c;
 }
 
@@ -375,18 +378,19 @@ body.room-mode #gif-container {
     transform: scale(0.98);
 }
 
-/* Floor section: bio + links revealed at the bottom after full scroll.
-   position: absolute; bottom: 0 so it only comes into view when the user
-   has scrolled the full room depth (~800px). */
+/* Floor section: bio + links. Sits BELOW the visible frame (top: 100%).
+   In phase 2 of the room-open scroll, JS translateY's it up so its top edge
+   stays glued to the bottom of the room (the near edge of the floor). */
 .floor-section {
     position: absolute;
-    bottom: 0;
+    top: 100%;
     left: 0;
     right: 0;
     padding: 24px 16px;
     background: #a2927c;
     z-index: 6;
     pointer-events: auto;
+    will-change: transform;
 }
 
 /* Bio text on the floor */

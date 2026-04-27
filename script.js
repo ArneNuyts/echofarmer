@@ -466,10 +466,13 @@ function syncWallCellVars() {
     frameInner.style.setProperty('--squares-bg', `url("data:image/svg+xml;utf8,${svg}")`);
 }
 
-// Animate room depth from 0 -> target by scroll position. The first
-// `target` pixels of scrolling "open" the room (back wall recedes from z=0
-// to z=-depth). Anything beyond that reveals the links section.
-let _roomOpening = false;
+// Two-phase scroll animation:
+//   Phase 1 (scrollTop in [0, depth]): "open" the room by animating
+//     --back-z from 0 to depth. Reverb wet ramps up. Walls/floor stay still.
+//   Phase 2 (scrollTop in [depth, depth + floorH]): the room (walls + gifs)
+//     and the floor-section translate upward by `extra = scrollTop - depth`.
+//     Floor-section is anchored at top:100% so it slides into view from
+//     below, top edge glued to the bottom of the room.
 function setupRoomScrollOpen() {
     const frameInner = document.getElementById('frame-inner');
     const scroller = document.getElementById('table-scroll');
@@ -480,23 +483,38 @@ function setupRoomScrollOpen() {
     if (gifContainer && gifContainer.parentElement !== frameInner) {
         frameInner.appendChild(gifContainer);
     }
+    const roomWalls = frameInner.querySelector('.room-walls');
+    const floorSection = frameInner.querySelector('.floor-section');
+    // Publish floor-section height as a CSS var so #table-content min-height
+    // reserves enough scroll room for phase 2.
+    const syncFloorHeight = () => {
+        const h = floorSection ? floorSection.offsetHeight : 0;
+        frameInner.style.setProperty('--floor-h', h + 'px');
+    };
+    syncFloorHeight();
+    window.addEventListener('resize', syncFloorHeight);
     // Start with the back wall pulled forward to z=0 (flat-table look).
     frameInner.style.setProperty('--back-z', '0px');
     frameInner.style.setProperty('--back-line-w', '1px');
     let raf = null;
     const update = () => {
         raf = null;
-        const target = _roomDepthTarget || 800;
-        const t = Math.min(1, Math.max(0, scroller.scrollTop / target));
-        const z = target * t;
-        frameInner.style.setProperty('--back-z', z + 'px');
-        // Adjust back-wall line thickness so projected lines stay ~1px on screen.
-        // scale = persp / (persp + z); thickness = round(1 / scale).
-        const scale = _roomPersp / (_roomPersp + z);
+        const depth = _roomDepthTarget || 800;
+        const st = scroller.scrollTop;
+        // Phase 1: opening (0 .. depth)
+        const phase1 = Math.min(st, depth);
+        const t = depth > 0 ? phase1 / depth : 0;
+        frameInner.style.setProperty('--back-z', phase1 + 'px');
+        const scale = _roomPersp / (_roomPersp + phase1);
         const lineW = Math.max(1, Math.round(1 / scale));
         frameInner.style.setProperty('--back-line-w', lineW + 'px');
-        // Progressively add room reverb as the room opens.
         setReverbAmount(t);
+        // Phase 2: slide the room + floor section up
+        const extra = Math.max(0, st - depth);
+        const ty = `translateY(${-extra}px)`;
+        if (roomWalls) roomWalls.style.transform = ty;
+        if (floorSection) floorSection.style.transform = ty;
+        if (gifContainer) gifContainer.style.transform = ty;
     };
     const onScroll = () => { if (raf === null) raf = requestAnimationFrame(update); };
     scroller.addEventListener('scroll', onScroll, { passive: true });
