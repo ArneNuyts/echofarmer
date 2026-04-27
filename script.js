@@ -1367,79 +1367,62 @@ async function fetchBandsintown() {
     if (!showsContainer) return;
 
     try {
-        // Try to fetch from Bandsintown API
-        // Note: Due to CORS, this may fail in browser - fallback to demo data
-        const apiUrl = 'https://rest.bandsintown.com/artists/echofarmer/events?app_id=echofarmer';
-        const response = await fetch(apiUrl);
+        // Fetch from our local proxy endpoint to bypass CORS
+        const response = await fetch('/api/bandsintown');
         
-        if (response.ok) {
-            const events = await response.json();
-            if (Array.isArray(events) && events.length > 0) {
-                // Filter for upcoming shows only
-                const now = new Date();
-                const upcomingEvents = events.filter(event => {
-                    const eventDate = new Date(event.datetime);
-                    return eventDate > now;
-                }).slice(0, 5);
-                
-                if (upcomingEvents.length > 0) {
-                    displayShows(upcomingEvents, showsContainer);
-                    return;
-                }
-            }
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-    } catch (error) {
-        console.log('Real API fetch failed (expected due to CORS):', error.message);
-    }
 
-    // Fallback to demo/placeholder shows
-    const demoShows = [
-        { 
-            datetime: new Date(2026, 4, 18, 20, 0).toISOString(),
-            venue: { name: 'Ancienne Belgique', city: 'Brussels', country: 'Belgium' }
-        },
-        { 
-            datetime: new Date(2026, 6, 10, 22, 0).toISOString(),
-            venue: { name: 'Fuse', city: 'Brussels', country: 'Belgium' }
-        },
-        { 
-            datetime: new Date(2026, 8, 15, 21, 0).toISOString(),
-            venue: { name: 'Atelier', city: 'Paris', country: 'France' }
+        const events = await response.json();
+        
+        if (!Array.isArray(events)) {
+            throw new Error('Invalid response format');
         }
-    ];
-    displayShows(demoShows, showsContainer);
+
+        // Filter for upcoming shows only (events in the future)
+        const now = new Date();
+        const upcomingEvents = events.filter(event => {
+            const eventDate = new Date(event.datetime);
+            return eventDate > now;
+        });
+
+        if (upcomingEvents.length === 0) {
+            showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">No upcoming shows currently scheduled</p></div>';
+            return;
+        }
+
+        displayShows(upcomingEvents, showsContainer);
+    } catch (error) {
+        console.error('Bandsintown fetch error:', error);
+        showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">Unable to load shows — <a href="https://www.bandsintown.com/a/15583965-echofarmer" target="_blank" style="color: #5d5343; text-decoration: underline;">view on Bandsintown</a></p></div>';
+    }
 }
 
 function displayShows(events, container) {
     container.innerHTML = '';
-    
-    if (!events || events.length === 0) {
-        container.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">No upcoming shows currently scheduled</p></div>';
-        return;
-    }
 
     events.forEach(event => {
         const eventDate = new Date(event.datetime);
         const dateStr = eventDate.toLocaleDateString('en-US', { 
             month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
+            day: 'numeric',
+            year: 'numeric'
         });
 
-        const timeStr = eventDate.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true
-        });
+        // Bandsintown puts the actual show title in event.title
+        // and venue.name often duplicates it. Prefer event.title when available.
+        const title = event.title || (event.venue && event.venue.name) || 'TBA';
+        const location = event.venue ? `${event.venue.city}, ${event.venue.country}` : '';
 
-        const venue = event.venue ? event.venue.name : 'TBA';
-        const location = event.venue ? `${event.venue.city}, ${event.venue.country}` : 'TBA';
+        // Build clickable link if event URL exists
+        const eventUrl = event.url || '';
 
         const showEl = document.createElement('div');
         showEl.className = 'show-item';
         showEl.innerHTML = `
-            <div class="show-date">${dateStr} • ${timeStr}</div>
-            <div class="show-venue">${venue}</div>
+            <div class="show-date">${dateStr}</div>
+            <div class="show-venue">${eventUrl ? `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">${title}</a>` : title}</div>
             <div class="show-location">${location}</div>
         `;
         container.appendChild(showEl);

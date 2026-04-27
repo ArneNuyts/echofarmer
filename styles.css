@@ -483,6 +483,18 @@ body.room-mode #gif-container {
     color: #333;
 }
 
+.show-venue a {
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px dotted #5d5343;
+    transition: color 0.2s ease;
+}
+
+.show-venue a:hover {
+    color: #4a4235;
+    border-bottom-color: #4a4235;
+}
+
 .show-location {
     color: #5d5343;
     font-size: 12px;
@@ -880,16 +892,19 @@ body.room-mode #gif-container {
 }
 
 /* Mobile Responsiveness */
-/* 4 columns by default - only narrow down on very small screens */
-@media (max-width: 500px) {
-    /* Tablet: 2×2 grid for floor sections */
+/* Min column width = a bit larger than 5 social icons (24px) + 4 gaps (10px) = 160px.
+   Use 175px as min column width. Floor-section width ≈ viewport - 60px (frame padding)
+   minus 32px floor padding = viewport - 92px.
+   - 4 cols requires floor ≥ 4×175 + 3×20 = 760px → viewport ≥ 852px
+   - 2 cols requires floor ≥ 2×175 + 1×20 = 370px → viewport ≥ 462px
+   - 1 col below */
+@media (max-width: 850px) {
     .floor-section {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 320px) {
-    /* Very small phones: single column for floor sections */
+@media (max-width: 460px) {
     .floor-section {
         grid-template-columns: 1fr;
         gap: 12px;

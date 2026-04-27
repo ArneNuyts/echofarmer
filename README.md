@@ -52,9 +52,19 @@ Edit `index.html` and update the links in the `.links-section` to your actual so
 
 ### 5. Open the Website
 
-Simply open `index.html` in a web browser. For best results:
-- Use a local server (e.g., Live Server extension in VS Code)
-- Or open directly in Chrome/Firefox
+Run the included Python proxy server (required for live Bandsintown shows feed):
+
+```bash
+python3 server.py
+```
+
+Then visit `http://localhost:8000/` in your browser.
+
+The `server.py` script:
+- Serves the static site files
+- Proxies Bandsintown API requests at `/api/bandsintown` to bypass browser CORS
+- Automatically fetches the latest shows from your Bandsintown artist page (id: 15583965)
+- Updates whenever you reload the page (no caching)
 
 ## File Structure
 
