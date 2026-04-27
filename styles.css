@@ -381,7 +381,7 @@ body.room-mode #gif-container {
     transform: scale(0.98);
 }
 
-/* Floor section: bio + links. Sits BELOW the visible frame (top: 100%).
+/* Floor section: 4-part grid layout. Sits BELOW the visible frame (top: 100%).
    In phase 2 of the room-open scroll, JS translateY's it up so its top edge
    stays glued to the bottom of the room (the near edge of the floor). */
 .floor-section {
@@ -394,22 +394,117 @@ body.room-mode #gif-container {
     z-index: 6;
     pointer-events: auto;
     will-change: transform;
+    
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    align-items: start;
 }
 
-/* Bio text on the floor */
+/* Individual floor parts */
+.floor-part {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.floor-heading {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a4235;
+    margin: 0;
+    padding: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Bio section */
 .bio {
-    margin: 0 auto 16px;
-    max-width: 800px;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.6;
     color: #333;
-    text-align: justify;
+    text-align: left;
     pointer-events: auto;
 }
 
 .bio p {
     margin: 0;
     padding: 0;
+}
+
+/* Releases section */
+.releases-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.release-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.release-date {
+    font-weight: 600;
+    color: #4a4235;
+}
+
+.release-title {
+    color: #333;
+    font-size: 13px;
+}
+
+/* Shows section */
+#shows-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.show-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    border-left: 2px solid #5d5343;
+    padding-left: 10px;
+}
+
+.show-date {
+    font-weight: 600;
+    color: #4a4235;
+    font-size: 12px;
+}
+
+.show-venue {
+    color: #333;
+}
+
+.show-location {
+    color: #5d5343;
+    font-size: 12px;
+}
+
+.btn-bandsintown {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #4a4235;
+    color: #a2927c;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #4a4235;
+}
+
+.btn-bandsintown:hover {
+    background: #a2927c;
+    color: #4a4235;
 }
 
 /* Links Section: merged bottom rows of the table */
@@ -419,9 +514,9 @@ body.room-mode #gif-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 8px 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0;
     background: transparent;
     z-index: 4;
 }
@@ -458,16 +553,9 @@ body.room-mode #gif-container {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    flex-wrap: nowrap;
-    gap: 12px;
-}
-
-.social-group {
-    justify-content: flex-start;
-}
-
-.music-group {
-    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
 }
 
 .social-links {
@@ -792,18 +880,30 @@ body.room-mode #gif-container {
 }
 
 /* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .social-links {
-        gap: 8px;
+/* 4 columns by default - only narrow down on very small screens */
+@media (max-width: 500px) {
+    /* Tablet: 2×2 grid for floor sections */
+    .floor-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 320px) {
+    /* Very small phones: single column for floor sections */
+    .floor-section {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 12px 8px;
     }
     
-    .social-links a {
-        font-size: 0.8em;
-        padding: 5px 10px;
+    .floor-heading {
+        font-size: 12px;
     }
     
-    .gif-item {
-        touch-action: none;
+    .bio,
+    .release-item,
+    .show-item {
+        font-size: 13px;
     }
 }
 
