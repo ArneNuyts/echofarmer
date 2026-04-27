@@ -469,10 +469,10 @@ function syncWallCellVars() {
 // Two-phase scroll animation:
 //   Phase 1 (scrollTop in [0, depth]): "open" the room by animating
 //     --back-z from 0 to depth. Reverb wet ramps up. Walls/floor stay still.
-//   Phase 2 (scrollTop in [depth, depth + floorH]): the room (walls + gifs)
-//     and the floor-section translate upward by `extra = scrollTop - depth`.
-//     Floor-section is anchored at top:100% so it slides into view from
-//     below, top edge glued to the bottom of the room.
+//   Phase 2 (scrollTop in [depth, depth + floorH]): the room (walls + gifs),
+//     header row, and the floor-section translate upward by `extra = scrollTop - depth`.
+//     Floor-section is anchored at top:100% so it slides into view from below.
+//     Header stays fixed to top of frame in phase 1, then slides up with room in phase 2.
 function setupRoomScrollOpen() {
     const frameInner = document.getElementById('frame-inner');
     const scroller = document.getElementById('table-scroll');
@@ -485,6 +485,7 @@ function setupRoomScrollOpen() {
     }
     const roomWalls = frameInner.querySelector('.room-walls');
     const floorSection = frameInner.querySelector('.floor-section');
+    const headerCanvas = frameInner.querySelector('.header-canvas');
     // Publish floor-section height as a CSS var so #table-content min-height
     // reserves enough scroll room for phase 2.
     const syncFloorHeight = () => {
@@ -509,10 +510,11 @@ function setupRoomScrollOpen() {
         const lineW = Math.max(1, Math.round(1 / scale));
         frameInner.style.setProperty('--back-line-w', lineW + 'px');
         setReverbAmount(t);
-        // Phase 2: slide the room + floor section up
+        // Phase 2: slide the room + header + floor section up
         const extra = Math.max(0, st - depth);
         const ty = `translateY(${-extra}px)`;
         if (roomWalls) roomWalls.style.transform = ty;
+        if (headerCanvas) headerCanvas.style.transform = ty;
         if (floorSection) floorSection.style.transform = ty;
         if (gifContainer) gifContainer.style.transform = ty;
     };
