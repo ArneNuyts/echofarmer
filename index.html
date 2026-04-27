@@ -8,14 +8,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>body { opacity: 0; }</style>
 </head>
-<body>
+<body class="room-mode">
+    <div id="hover-info"></div>
     <div id="right-panel"></div>
     <div id="controls-bar" class="controls-bar">
         <button id="lock-button" class="icon-button lock-button" title="Toggle lock" aria-label="Lock"><img src="icons/SVG-STATES/NORMAL/lock-open-yellow.svg" alt="Lock"></button>
         <button id="view-toggle" class="icon-button view-toggle" title="Toggle 3D room / flat view" aria-label="Toggle view"><img src="icons/SVG-STATES/NORMAL/room-3D.svg" alt="3D"></button>
         <div id="drive-knob" class="icon-button knob" title="Drive" role="slider" aria-label="Drive" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-            <div class="knob-dial"><img src="icons/SVG-STATES/NORMAL/knob.svg" alt="Drive"></div>
+            <div class="knob-dial"><img src="icons/SVG-STATES/NORMAL/knob-plus.svg" alt="Drive"></div>
         </div>
         <button id="add-video" class="icon-button add-video" title="Add video sampler" aria-label="Add video"><img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Add"></button>
     </div>
@@ -28,6 +30,7 @@
                     <div id="gif-container"></div>
                 </div>
             </div>
+
             <div class="room-walls">
                 <div class="wall wall-back"></div>
                 <div class="wall wall-floor"></div>

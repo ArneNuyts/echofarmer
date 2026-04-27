@@ -93,14 +93,19 @@ const VIEW_MODE = (() => {
 })();
 if (VIEW_MODE === 'flat') {
     document.documentElement.classList.add('flat-mode');
-    document.addEventListener('DOMContentLoaded', () => document.body.classList.add('flat-mode'));
+    document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.remove('room-mode');
+        document.body.classList.add('flat-mode');
+    });
 } else {
     document.documentElement.classList.add('room-mode');
-    document.addEventListener('DOMContentLoaded', () => document.body.classList.add('room-mode'));
 }
 
 // Lock state for dragging
 let isDraggingLocked = false;
+
+// Shared z-index counter for bring-to-front on GIFs and video pads
+let _topZ = 1;
 
 // Shared Web Audio context + master chain (created lazily)
 // Graph: sources -> masterIn -> (dry) ---------------------\
@@ -224,6 +229,7 @@ function _makeRoomImpulse(ctx, duration, decay) {
 }
 
 // Set reverb wet amount [0..1].
+let _lastIrStep = -1;
 function setReverbAmount(amount) {
     _ensureMasterChain();
     if (!_reverbWet) return;
@@ -232,6 +238,15 @@ function setReverbAmount(amount) {
     const t = ctx ? ctx.currentTime : 0;
     // Wet ramps up to ~1.0 (loud, lush) when room is fully open.
     _reverbWet.gain.setTargetAtTime(a * 1.0, t, 0.05);
+    // Rebuild IR at 6 discrete steps so decay lengthens as the room opens.
+    // duration 1.0s→3.0s, decay-steepness 4.0→2.0 (lower = longer tail).
+    const step = Math.round(a * 5) / 5;
+    if (_reverbConvolver && Math.abs(step - _lastIrStep) >= 0.19) {
+        _lastIrStep = step;
+        const duration = 1.0 + step * 2.0;
+        const decay    = 4.0 - step * 2.0;
+        _reverbConvolver.buffer = _makeRoomImpulse(ctx, duration, decay);
+    }
 }
 
 function getMasterIn() {
@@ -492,6 +507,9 @@ function syncWallCellVars() {
         `<rect x='${sx}' y='${sy}' width='${sq}' height='${sq}' fill='%235d5343'/>` +
         `</pattern></defs><rect width='100%25' height='100%25' fill='url(%23p)'/></svg>`;
     frameInner.style.setProperty('--squares-bg', `url("data:image/svg+xml;utf8,${svg}")`);
+    // Size the hover-info bar to match two header cells
+    const hoverInfo = document.getElementById('hover-info');
+    if (hoverInfo) hoverInfo.style.width = (cellWidth * 3) + 'px';
 }
 
 // Two-phase scroll animation:
@@ -673,6 +691,8 @@ function setupSvgHoverStates() {
         
         // Lock button excluded: its src changes on click, generic mouseleave would reset it
         if (hoverElement.id === 'lock-button') return;
+        // Drive knob excluded: hover state also active while dragging, handled in driveKnob block
+        if (hoverElement.closest('#drive-knob')) return;
         
         const normalSrc = img.src;
         const hoverSrc = normalSrc.replace('SVG-STATES/NORMAL/', 'SVG-STATES/HOVER/');
@@ -691,9 +711,24 @@ class GifSampler {
         this.config = config;
         this.container = document.getElementById('gif-container');
         this.gifs = [];
+        // Physical key codes matching the original layout (AZERTY: Q=KeyA, Z=KeyW; QWERTY: A=KeyA, W=KeyW)
+        this.triggerCodes = ['KeyA','KeyW','KeyS','KeyE','KeyD','KeyF','KeyT','KeyG','KeyY','KeyH','KeyU','KeyJ','KeyK','KeyO','KeyL'];
+        // Display labels — QWERTY defaults; updated by KeyboardLayoutMap when available
+        this.keyLabels = ['A','W','S','E','D','F','T','G','Y','H','U','J','K','O','L'];
         this.init();
         this.setupAudioUnlock();
         this.setupKeyboardListeners();
+        this._initKeyLabels();
+    }
+
+    _initKeyLabels() {
+        if (navigator.keyboard && typeof navigator.keyboard.getLayoutMap === 'function') {
+            navigator.keyboard.getLayoutMap().then(map => {
+                this.triggerCodes.forEach((code, i) => {
+                    if (map.has(code)) this.keyLabels[i] = map.get(code).toUpperCase();
+                });
+            }).catch(() => {});
+        }
     }
 
     setupAudioUnlock() {
@@ -719,15 +754,10 @@ class GifSampler {
     }
 
     setupKeyboardListeners() {
-        // Keys that should activate GIFs (by character, works on AZERTY and QWERTY)
-        const triggerKeys = ['q', 'z', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k', 'o', 'l'];
-        
         document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            const index = triggerKeys.indexOf(key);
+            const index = this.triggerCodes.indexOf(e.code);
             if (index !== -1 && index < this.gifs.length) {
-                const gifData = this.gifs[index];
-                this.activateGif(gifData);
+                this.activateGif(this.gifs[index]);
             }
         });
     }
@@ -1001,6 +1031,9 @@ class GifSampler {
 
         gifDiv.appendChild(placeholder);
         gifDiv.appendChild(animatedImg);
+        const gifIndex = index;
+        gifDiv.addEventListener('mouseenter', () => setHoverInfo(`Click me or press (${this.keyLabels[gifIndex]})`));
+        gifDiv.addEventListener('mouseleave', () => setHoverInfo(''));
         this.container.appendChild(gifDiv);
 
         // Build audio pool: either a single source or a list of randomized samples
@@ -1140,6 +1173,7 @@ class GifSampler {
             
             // Start playing audio immediately on mousedown
             this.activateGif(gifData);
+            element.style.zIndex = ++_topZ;
             
             gifData.dragStartTime = Date.now();
             gifData.isDragging = false;
@@ -1302,6 +1336,13 @@ class GifSampler {
 }
 
 // Initialize the sampler when DOM is ready
+function setHoverInfo(text) {
+    const el = document.getElementById('hover-info');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('visible', !!text);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     new GifSampler(samplerConfig);
     setupCustomScrollbar();
@@ -1313,6 +1354,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (VIEW_MODE === 'room') {
         requestAnimationFrame(() => setupRoomScrollOpen());
     }
+
+    // Reveal page now that classes and layout are settled — prevents flash on load
+    requestAnimationFrame(() => {
+        document.body.style.transition = 'opacity 0.15s';
+        document.body.style.opacity = '1';
+    });
 
     // Forward wheel events from anywhere on the page to the scroller
     const scroller = document.getElementById('table-scroll');
@@ -1369,9 +1416,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const driveKnob = document.getElementById('drive-knob');
     if (driveKnob) {
         const dial = driveKnob.querySelector('.knob-dial');
+        // Wrap the rotating dial in a fixed clip that always hides the bottom 60° gap
+        // so the arc body never bleeds into the gap region as it rotates.
+        // Polygon: full rect minus the wedge from 7 o'clock → center → 5 o'clock.
+        const dialClip = document.createElement('div');
+        dialClip.style.cssText = 'position:absolute;inset:0;clip-path:polygon(0 0,100% 0,100% 100%,68.5% 92%,54.5% 70%,45.5% 70%,31.5% 92%,0 100%);';
+        driveKnob.insertBefore(dialClip, dial);
+        dialClip.appendChild(dial);
         const MIN_ANGLE = 0;
-        const MAX_ANGLE = 270;
+        const MAX_ANGLE = 300;
         let amount = 0;
+
+        // Indication overlay: clip knob-indication.svg to a pie sector matching the current amount
+        const NS = 'http://www.w3.org/2000/svg';
+        const overlaySvg = document.createElementNS(NS, 'svg');
+        overlaySvg.setAttribute('viewBox', '0 0 1 1');
+        overlaySvg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
+        const defs = document.createElementNS(NS, 'defs');
+        const clipPath = document.createElementNS(NS, 'clipPath');
+        clipPath.setAttribute('id', 'knob-ring-clip');
+        const clipSector = document.createElementNS(NS, 'path');
+        clipPath.appendChild(clipSector);
+        defs.appendChild(clipPath);
+        overlaySvg.appendChild(defs);
+        const indicationImg = document.createElementNS(NS, 'image');
+        indicationImg.setAttribute('href', 'icons/SVG-STATES/HOVER/knob-indication.svg');
+        indicationImg.setAttribute('x', '0');
+        indicationImg.setAttribute('y', '0');
+        indicationImg.setAttribute('width', '1');
+        indicationImg.setAttribute('height', '1');
+        indicationImg.setAttribute('clip-path', 'url(#knob-ring-clip)');
+        overlaySvg.appendChild(indicationImg);
+        driveKnob.appendChild(overlaySvg);
+
+        // Returns a pie-sector path (in 0..1 normalised coords) from the start angle
+        // sweeping clockwise by amount*300°. Angles measured from top, clockwise.
+        function makeSectorPath(amt) {
+            if (amt < 0.001) return '';
+            const cx = 0.5, cy = 0.5, r = 0.7;
+            const toRad = d => d * Math.PI / 180;
+            const startDeg = 210;                    // 30° left of bottom (7 o'clock)
+            const endDeg   = startDeg + amt * 300;   // up to 30° right of bottom (5 o'clock)
+            const x1 = cx + r * Math.sin(toRad(startDeg));
+            const y1 = cy - r * Math.cos(toRad(startDeg));
+            const x2 = cx + r * Math.sin(toRad(endDeg));
+            const y2 = cy - r * Math.cos(toRad(endDeg));
+            const largeArc = (endDeg - startDeg) > 180 ? 1 : 0;
+            return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        }
 
         const applyAmount = (a) => {
             amount = Math.max(0, Math.min(1, a));
@@ -1380,6 +1472,8 @@ document.addEventListener('DOMContentLoaded', () => {
             driveKnob.setAttribute('aria-valuenow', Math.round(amount * 100));
             driveKnob.classList.toggle('active', amount > 0.001);
             setDriveAmount(amount);
+            clipSector.setAttribute('d', makeSectorPath(amount));
+            if (!_applyInit) setHoverInfo('DRIVE ' + Math.round(amount * 100) + '%');
         };
 
         let dragging = false;
@@ -1398,10 +1492,24 @@ document.addEventListener('DOMContentLoaded', () => {
             startAmount = amount;
             e.preventDefault();
         });
+        const knobDialImg = dial.querySelector('img');
+        if (knobDialImg) {
+            driveKnob.addEventListener('mouseenter', () => { knobDialImg.src = 'icons/SVG-STATES/HOVER/knob-plus.svg'; });
+            driveKnob.addEventListener('mouseleave', () => { if (!dragging) knobDialImg.src = 'icons/SVG-STATES/NORMAL/knob-plus.svg'; });
+        }
         document.addEventListener('mousemove', (e) => {
             if (dragging) onMove(e.clientY);
         });
-        document.addEventListener('mouseup', () => { dragging = false; });
+        document.addEventListener('mouseup', () => {
+            if (dragging) {
+                setHoverInfo('');
+                // Restore normal image if cursor is no longer over the knob
+                if (knobDialImg && !driveKnob.matches(':hover')) {
+                    knobDialImg.src = 'icons/SVG-STATES/NORMAL/knob-plus.svg';
+                }
+            }
+            dragging = false;
+        });
 
         driveKnob.addEventListener('touchstart', (e) => {
             dragging = true;
@@ -1412,11 +1520,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('touchmove', (e) => {
             if (dragging) onMove(e.touches[0].clientY);
         }, { passive: false });
-        document.addEventListener('touchend', () => { dragging = false; });
+        document.addEventListener('touchend', () => { if (dragging) setHoverInfo(''); dragging = false; });
 
+        let _wheelTimeout = null;
         driveKnob.addEventListener('wheel', (e) => {
             e.preventDefault();
             applyAmount(amount - e.deltaY / 1000);
+            clearTimeout(_wheelTimeout);
+            _wheelTimeout = setTimeout(() => setHoverInfo(''), 800);
         }, { passive: false });
 
         driveKnob.addEventListener('dblclick', () => applyAmount(0));
@@ -1425,13 +1536,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { applyAmount(amount + 0.05); e.preventDefault(); }
             else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { applyAmount(amount - 0.05); e.preventDefault(); }
         });
+        driveKnob.addEventListener('keyup', () => setHoverInfo(''));
 
+        let _applyInit = true;
         applyAmount(0);
+        _applyInit = false;
     }
 
     // Fetch and display upcoming shows from Bandsintown
     fetchBandsintown();
-    // setupVideoPads(); // disabled for now - back to basics
+    // Wire up the add-video button
+    const addVideoBtn = document.getElementById('add-video');
+    if (addVideoBtn) addVideoBtn.addEventListener('click', createVideoPad);
+
+    // Hover info bar — action buttons
+    [
+        { id: 'lock-button', label: 'Lock/unlock GIF position' },
+        { id: 'drive-knob',  label: 'Drive' },
+        { id: 'add-video',   label: 'Add video sampler' },
+    ].forEach(({ id, label }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mouseenter', () => setHoverInfo(label));
+        el.addEventListener('mouseleave', () => setHoverInfo(''));
+    });
 });
 
 // Fetch Bandsintown shows and display them
@@ -1500,6 +1628,504 @@ function displayShows(events, container) {
         `;
         container.appendChild(showEl);
     });
+}
+
+// ─── Video Sampler Pad ───────────────────────────────────────────────────────
+
+// YouTube IFrame API loader (singleton, lazy)
+let _ytApiLoaded = false;
+let _ytApiCallbacks = [];
+function loadYTApi(cb) {
+    if (typeof YT !== 'undefined' && YT.Player) { cb(); return; }
+    _ytApiCallbacks.push(cb);
+    if (_ytApiLoaded) return;
+    _ytApiLoaded = true;
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+}
+window.onYouTubeIframeAPIReady = () => {
+    _ytApiCallbacks.forEach(cb => cb());
+    _ytApiCallbacks = [];
+};
+
+function createVideoPad() {
+    let keyBinding = null;
+    let isPlaying = false;
+    let ytPlayer = null;
+    let ytReady = false;
+    let ytPollInterval = null;
+    let dragging = false, dragOffX = 0, dragOffY = 0;
+
+    // Build DOM
+    const pad = document.createElement('div');
+    pad.className = 'video-pad';
+    pad.style.position = 'absolute';
+
+    // Stagger new pads
+    const existing = document.querySelectorAll('.video-pad').length;
+    pad.style.left = (60 + existing * 24) + 'px';
+    pad.style.top  = (60 + existing * 24) + 'px';
+
+    // URL input
+    const urlInput = document.createElement('input');
+    urlInput.className = 'video-url';
+    urlInput.type = 'text';
+    urlInput.placeholder = 'Paste video URL here…';
+
+    // Close button — placed in grid col2/row1 (aligned with url and vol column)
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'video-close';
+    const closeImg = document.createElement('img');
+    closeImg.src = 'icons/SVG-STATES/NORMAL/plus.svg';
+    closeImg.alt = 'Close';
+    closeImg.style.cssText = 'width:19.5px;height:19.5px;display:block;transform:rotate(45deg);pointer-events:none;';
+    closeBtn.appendChild(closeImg);
+    closeBtn.addEventListener('mouseenter', () => { closeImg.src = 'icons/SVG-STATES/HOVER/plus.svg'; });
+    closeBtn.addEventListener('mouseleave', () => { closeImg.src = 'icons/SVG-STATES/NORMAL/plus.svg'; });
+
+    const stage = document.createElement('div');
+    stage.className = 'video-stage';
+    const videoEl = document.createElement('video');
+    videoEl.className = 'video-el';
+    videoEl.hidden = true;
+    videoEl.crossOrigin = 'anonymous';
+    let _videoSourceNode = null;
+    function _connectVideoToChain() {
+        if (_videoSourceNode) return;
+        _ensureMasterChain();
+        const ctx = getAudioContext();
+        if (!ctx || !_masterIn) return;
+        try {
+            _videoSourceNode = ctx.createMediaElementSource(videoEl);
+            _videoSourceNode.connect(_masterIn);
+        } catch(_) {}
+    }
+    // ytWrapper stays in the DOM permanently so it keeps its CSS class.
+    // YT.Player replaces an inner div, not the wrapper itself.
+    const ytWrapper = document.createElement('div');
+    ytWrapper.className = 'video-yt';
+    ytWrapper.hidden = true;
+    // Transparent overlay blocks direct iframe interaction; our controls use the API
+    const ytOverlay = document.createElement('div');
+    ytOverlay.className = 'video-yt-overlay';
+
+    // Control row: PLAY | KEY MAP | timecode
+    const scrub = document.createElement('input');
+    scrub.className = 'video-scrub';
+    scrub.type = 'range'; scrub.min = 0; scrub.max = 1; scrub.step = 0.001; scrub.value = 0;
+    function updateScrubTrack() {
+        const pct = parseFloat(scrub.value) * 100;
+        scrub.style.background = `linear-gradient(to right, #bfb8af ${pct}%, #595147 ${pct}%)`;
+    }
+    updateScrubTrack();
+    const padRow = document.createElement('div');
+    padRow.className = 'video-pad-row';
+    const timeLabel = document.createElement('span');
+    timeLabel.className = 'video-time';
+    timeLabel.textContent = '0:00 / 0:00';
+    const triggerBtn = document.createElement('button');
+    triggerBtn.className = 'video-trigger';
+    triggerBtn.textContent = '▶  PLAY';
+    const keyBtn = document.createElement('button');
+    keyBtn.className = 'video-key';
+    keyBtn.textContent = 'KEY MAP';
+    padRow.appendChild(triggerBtn);
+    padRow.appendChild(keyBtn);
+    padRow.appendChild(timeLabel);
+
+    stage.appendChild(videoEl);
+    stage.appendChild(ytWrapper);
+    stage.appendChild(ytOverlay);
+
+    // Stereo meter + fader knob
+    let volValue = 0.8;
+    const meterWrap = document.createElement('div');
+    meterWrap.className = 'video-meter-wrap';
+    const meterBars = document.createElement('div');
+    meterBars.className = 'video-meter-bars';
+    const meterBarL = document.createElement('div');
+    meterBarL.className = 'video-meter-bar';
+    const meterFillL = document.createElement('div');
+    meterFillL.className = 'video-meter-fill';
+    meterBarL.appendChild(meterFillL);
+    const meterBarR = document.createElement('div');
+    meterBarR.className = 'video-meter-bar';
+    const meterFillR = document.createElement('div');
+    meterFillR.className = 'video-meter-fill';
+    meterBarR.appendChild(meterFillR);
+    meterBars.appendChild(meterBarL);
+    meterBars.appendChild(meterBarR);
+    const faderKnob = document.createElement('div');
+    faderKnob.className = 'video-fader-knob';
+    meterWrap.appendChild(meterBars);
+    meterWrap.appendChild(faderKnob);
+
+    function setFaderPos(v) {
+        volValue = Math.max(0, Math.min(1, v));
+        faderKnob.style.top = `calc(${(1 - volValue) * 100}% - 3px)`;
+        meterFillL.style.height = `${volValue * 100}%`;
+        meterFillR.style.height = `${volValue * 100}%`;
+        videoEl.volume = volValue;
+        if (ytPlayer && ytReady) { try { ytPlayer.setVolume(volValue * 100); } catch(_) {} }
+    }
+    setFaderPos(0.8);
+
+    let faderDragging = false;
+    faderKnob.addEventListener('mousedown', (e) => { faderDragging = true; e.preventDefault(); e.stopPropagation(); });
+    document.addEventListener('mousemove', (e) => {
+        if (!faderDragging) return;
+        const rect = meterWrap.getBoundingClientRect();
+        setFaderPos(1 - (e.clientY - rect.top) / rect.height);
+    });
+    document.addEventListener('mouseup', () => { faderDragging = false; });
+    faderKnob.addEventListener('dblclick', () => setFaderPos(0.8));
+
+    const volLabel = document.createElement('div');
+    volLabel.className = 'video-vol-label';
+    volLabel.textContent = 'VOL';
+
+    // CSS grid layout: col1=content, col2=vol/close; row1=url/close, row2=stage/vol, row3=controls/label
+    const layout = document.createElement('div');
+    layout.className = 'video-layout';
+    urlInput.style.gridColumn = '1'; urlInput.style.gridRow = '1';
+    stage.style.gridColumn    = '1'; stage.style.gridRow    = '2';
+    layout.appendChild(urlInput);   // col1 row1
+    layout.appendChild(closeBtn);   // col2 row1
+    layout.appendChild(stage);      // col1 row2
+    layout.appendChild(meterWrap);  // col2 row2-3
+    layout.appendChild(scrub);      // col1 row3
+    layout.appendChild(padRow);     // col1 row4
+    layout.appendChild(volLabel);   // col2 row4
+    pad.appendChild(layout);
+
+    const _padContainer = document.getElementById('gif-container') || document.getElementById('frame-inner') || document.body;
+    _padContainer.appendChild(pad);
+
+    // ── Helpers ──
+    function fmt(s) {
+        if (!isFinite(s)) return '0:00';
+        return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    }
+    function isYT(url) { return /youtu\.be\/|youtube\.com\/(?:watch|shorts)/.test(url); }
+    function getYTId(url) { const m = url.match(/(?:youtu\.be\/|[?&]v=|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
+
+    function stopYTPoll() {
+        if (ytPollInterval) { clearInterval(ytPollInterval); ytPollInterval = null; }
+    }
+
+    function startYTPoll() {
+        stopYTPoll();
+        ytPollInterval = setInterval(() => {
+            if (!ytPlayer || !ytReady) return;
+            try {
+                const dur = ytPlayer.getDuration();
+                const cur = ytPlayer.getCurrentTime();
+                if (dur > 0) {
+                    scrub.value = cur / dur;
+                    updateScrubTrack();
+                    timeLabel.textContent = `${fmt(cur)} / ${fmt(dur)}`;
+                }
+            } catch (_) {}
+        }, 250);
+    }
+
+    function resetPlayer() {
+        stopYTPoll();
+        videoEl.pause(); videoEl.src = ''; videoEl.hidden = true;
+        if (ytPlayer) { try { ytPlayer.destroy(); } catch (_) {} ytPlayer = null; }
+        ytReady = false;
+        ytWrapper.innerHTML = ''; ytWrapper.hidden = true;
+        isPlaying = false;
+        triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+        scrub.value = 0; timeLabel.textContent = '0:00 / 0:00'; updateScrubTrack();
+    }
+
+    function loadUrl(raw) {
+        const url = raw.trim(); if (!url) return;
+        resetPlayer();
+        if (isYT(url)) {
+            const id = getYTId(url); if (!id) return;
+            ytWrapper.hidden = false;
+            loadYTApi(() => {
+                // Create a fresh inner target — YT.Player replaces this, not ytWrapper
+                const ytTarget = document.createElement('div');
+                ytTarget.style.width = '100%';
+                ytTarget.style.height = '100%';
+                ytWrapper.appendChild(ytTarget);
+                ytPlayer = new YT.Player(ytTarget, {
+                    videoId: id,
+                    width: '100%',
+                    height: '100%',
+                    playerVars: { rel: 0, enablejsapi: 1, controls: 0, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, fs: 0, modestbranding: 1 },
+                    events: {
+                        onReady() {
+                            ytReady = true;
+                            ytPlayer.setVolume(volValue * 100);
+                            startYTPoll();
+                        },
+                        onStateChange(e) {
+                            if (e.data === YT.PlayerState.PLAYING) {
+                                isPlaying = true; triggerBtn.textContent = '■  STOP'; triggerBtn.classList.add('active');
+                            } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
+                                isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+                            }
+                        }
+                    }
+                });
+            });
+        } else {
+            videoEl.hidden = false;
+            videoEl.src = url;
+            videoEl.volume = volValue;
+            videoEl.load();
+            _connectVideoToChain();
+        }
+    }
+
+    let startScrubPos = 0;
+
+    function startPlay() {
+        startScrubPos = parseFloat(scrub.value);
+        if (ytPlayer && ytReady) {
+            try {
+                const dur = ytPlayer.getDuration();
+                if (dur > 0) ytPlayer.seekTo(startScrubPos * dur, true);
+                ytPlayer.playVideo();
+            } catch (_) {}
+        } else if (!videoEl.hidden && videoEl.src) {
+            if (videoEl.duration) videoEl.currentTime = startScrubPos * videoEl.duration;
+            videoEl.play();
+            isPlaying = true; triggerBtn.classList.add('active');
+        }
+        triggerBtn.textContent = '■  STOP';
+        triggerBtn.classList.add('active');
+    }
+
+    function stopPlay() {
+        if (ytPlayer && ytReady) {
+            try {
+                ytPlayer.pauseVideo();
+                ytPlayer.seekTo(startScrubPos * ytPlayer.getDuration(), true);
+            } catch (_) {}
+        } else if (!videoEl.hidden) {
+            videoEl.pause();
+            if (videoEl.duration) videoEl.currentTime = startScrubPos * videoEl.duration;
+        }
+        scrub.value = startScrubPos; updateScrubTrack();
+        const dur = videoEl.duration || (ytPlayer && ytReady ? (() => { try { return ytPlayer.getDuration(); } catch(_){return 0;} })() : 0);
+        timeLabel.textContent = `${fmt(startScrubPos * dur)} / ${fmt(dur)}`;
+        isPlaying = false;
+        triggerBtn.textContent = '▶  PLAY';
+        triggerBtn.classList.remove('active');
+    }
+
+    // ── HTML5 video events ──
+    videoEl.addEventListener('timeupdate', () => {
+        if (videoEl.duration) {
+            scrub.value = videoEl.currentTime / videoEl.duration;
+            updateScrubTrack();
+            timeLabel.textContent = `${fmt(videoEl.currentTime)} / ${fmt(videoEl.duration)}`;
+        }
+    });
+    videoEl.addEventListener('ended', () => {
+        isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+    });
+    scrub.addEventListener('input', () => {
+        updateScrubTrack();
+        if (ytPlayer && ytReady) {
+            try {
+                const dur = ytPlayer.getDuration();
+                if (dur > 0) ytPlayer.seekTo(scrub.value * dur, true);
+            } catch (_) {}
+        } else if (videoEl.duration) {
+            videoEl.currentTime = scrub.value * videoEl.duration;
+        }
+    });
+    // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
+    let timeDragY = null;
+    let timeDragStart = null;
+    let timeDragShift = false;
+    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up/down to set sample start'));
+    timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
+    timeLabel.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        timeDragY = e.clientY;
+        timeDragShift = e.shiftKey;
+        timeDragStart = ytPlayer && ytReady
+            ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
+            : (videoEl.duration ? videoEl.currentTime : 0);
+        timeLabel.classList.add('dragging');
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (timeDragY === null) return;
+        const rate = timeDragShift ? 0.01 : 1;
+        const delta = (timeDragY - e.clientY) * rate;
+        const target = timeDragStart + delta;
+        if (ytPlayer && ytReady) {
+            try {
+                const dur = ytPlayer.getDuration();
+                if (dur > 0) ytPlayer.seekTo(Math.max(0, Math.min(dur, target)), true);
+            } catch (_) {}
+        } else if (videoEl.duration) {
+            videoEl.currentTime = Math.max(0, Math.min(videoEl.duration, target));
+            scrub.value = videoEl.currentTime / videoEl.duration;
+            timeLabel.textContent = `${fmt(videoEl.currentTime)} / ${fmt(videoEl.duration)}`;
+        }
+    });
+    document.addEventListener('mouseup', () => {
+        if (timeDragY !== null) {
+            // Update cue point so trigger snap-back goes to the new position
+            if (videoEl.duration) startScrubPos = videoEl.currentTime / videoEl.duration;
+            else if (ytPlayer && ytReady) {
+                try { const d = ytPlayer.getDuration(); if (d > 0) startScrubPos = ytPlayer.getCurrentTime() / d; } catch(_) {}
+            }
+        }
+        timeDragY = null; timeDragStart = null; timeDragShift = false;
+        timeLabel.classList.remove('dragging');
+    });
+    timeLabel.addEventListener('touchstart', (e) => {
+        timeDragY = e.touches[0].clientY;
+        timeDragShift = false;
+        timeDragStart = ytPlayer && ytReady
+            ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
+            : (videoEl.duration ? videoEl.currentTime : 0);
+    }, { passive: true });
+    timeLabel.addEventListener('touchmove', (e) => {
+        if (timeDragY === null) return;
+        const rate = e.touches.length > 1 ? 0.1 : 1; // two-finger touch = fine mode
+        const delta = (timeDragY - e.touches[0].clientY) * rate;
+        const target = timeDragStart + delta;
+        if (ytPlayer && ytReady) {
+            try {
+                const dur = ytPlayer.getDuration();
+                if (dur > 0) ytPlayer.seekTo(Math.max(0, Math.min(dur, target)), true);
+            } catch (_) {}
+        } else if (videoEl.duration) {
+            videoEl.currentTime = Math.max(0, Math.min(videoEl.duration, target));
+            scrub.value = videoEl.currentTime / videoEl.duration;
+            timeLabel.textContent = `${fmt(videoEl.currentTime)} / ${fmt(videoEl.duration)}`;
+        }
+    }, { passive: true });
+    timeLabel.addEventListener('touchend', () => { timeDragY = null; timeDragStart = null; timeLabel.classList.remove('dragging'); });
+
+    // ── URL load ──
+    urlInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { loadUrl(urlInput.value); urlInput.blur(); }
+    });
+    urlInput.addEventListener('paste', () => setTimeout(() => loadUrl(urlInput.value), 0));
+
+    // ── Trigger (hold to play) ──
+    triggerBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startPlay(); });
+    triggerBtn.addEventListener('mouseleave', stopPlay);
+    triggerBtn.addEventListener('mouseup', stopPlay);
+    triggerBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPlay(); }, { passive: false });
+    triggerBtn.addEventListener('touchend', stopPlay);
+
+    // ── Key binding ──
+    let listening = false;
+    let keyHeld = false;
+    const keydownHandler = (e) => {
+        if (listening) {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                listening = false; keyBinding = null;
+                keyBtn.classList.remove('binding', 'mapped');
+                keyBtn.textContent = 'KEY MAP';
+            } else {
+                // Store the raw key exactly as fired so comparison always matches
+                keyBinding = e.key;
+                keyBtn.classList.remove('binding');
+                keyBtn.classList.add('mapped');
+                keyBtn.textContent = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+                listening = false;
+            }
+            e.preventDefault(); e.stopPropagation(); return;
+        }
+        if (keyBinding && document.activeElement !== urlInput && e.key === keyBinding && !keyHeld) {
+            keyHeld = true;
+            startPlay(); e.preventDefault();
+        }
+    };
+    const keyupHandler = (e) => {
+        if (keyBinding && e.key === keyBinding && keyHeld) {
+            keyHeld = false;
+            stopPlay();
+        }
+    };
+    document.addEventListener('keydown', keydownHandler);
+    document.addEventListener('keyup', keyupHandler);
+    keyBtn.addEventListener('mouseenter', () => setHoverInfo('Click and press a key'));
+    keyBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+    keyBtn.addEventListener('click', () => {
+        if (listening) {
+            // Second click cancels listening, restore previous state
+            listening = false;
+            keyBtn.classList.remove('binding');
+            if (keyBinding) {
+                keyBtn.classList.add('mapped');
+                keyBtn.textContent = keyBinding.length === 1 ? keyBinding.toUpperCase() : keyBinding;
+            } else {
+                keyBtn.textContent = 'KEY MAP';
+            }
+        } else {
+            listening = true; keyBtn.classList.add('binding'); keyBtn.classList.remove('mapped');
+        }
+    });
+
+    // ── Close ──
+    closeBtn.addEventListener('click', () => {
+        stopYTPoll();
+        videoEl.pause();
+        if (ytPlayer) { try { ytPlayer.destroy(); } catch (_) {} }
+        document.removeEventListener('keydown', keydownHandler);
+        document.removeEventListener('keyup', keyupHandler);
+        pad.remove();
+    });
+
+    // ── Drag (mouse) ──
+    pad.addEventListener('mousedown', (e) => {
+        if (isDraggingLocked) return;
+        const t = e.target.tagName.toLowerCase();
+        if (['input','button','iframe','select','textarea'].includes(t)) return;
+        pad.style.zIndex = ++_topZ;
+        dragging = true;
+        const r = pad.getBoundingClientRect();
+        dragOffX = e.clientX - r.left; dragOffY = e.clientY - r.top;
+        e.preventDefault();
+    });
+    const onMouseMove = (e) => { if (!dragging) return; const _fr = (_padContainer).getBoundingClientRect(); pad.style.left = (e.clientX - _fr.left - dragOffX) + 'px'; pad.style.top = (e.clientY - _fr.top - dragOffY) + 'px'; };
+    const onMouseUp = () => { dragging = false; };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    // ── Drag (touch) ──
+    pad.addEventListener('touchstart', (e) => {
+        if (isDraggingLocked) return;
+        const t = e.target.tagName.toLowerCase();
+        if (['input','button','iframe','select','textarea'].includes(t)) return;
+        pad.style.zIndex = ++_topZ;
+        dragging = true;
+        const r = pad.getBoundingClientRect();
+        dragOffX = e.touches[0].clientX - r.left; dragOffY = e.touches[0].clientY - r.top;
+    }, { passive: true });
+    const onTouchMovePad = (e) => { if (!dragging) return; const _fr = (_padContainer).getBoundingClientRect(); pad.style.left = (e.touches[0].clientX - _fr.left - dragOffX) + 'px'; pad.style.top = (e.touches[0].clientY - _fr.top - dragOffY) + 'px'; };
+    const onTouchEndPad = () => { dragging = false; };
+    document.addEventListener('touchmove', onTouchMovePad, { passive: true });
+    document.addEventListener('touchend', onTouchEndPad);
+
+    // Clean up drag listeners when pad is removed
+    const observer = new MutationObserver(() => {
+        if (!document.body.contains(pad)) {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMovePad);
+            document.removeEventListener('touchend', onTouchEndPad);
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: false });
 }
 
 // Prevent default drag behavior on all images
