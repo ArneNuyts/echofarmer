@@ -1207,7 +1207,7 @@ body.room-mode #gif-container {
     .floor-section {
         grid-template-columns: 1fr;
         column-gap: 12px;
-        row-gap: 32px;
+        row-gap: 44px;
         padding: 12px 8px;
     }
 }
@@ -1260,7 +1260,7 @@ body.room-mode #gif-container {
 /* strip at the top of the frame. Icons scale up to match .icon-link (30px).   */
 @media (max-width: 768px) {
     #frame-wrapper {
-        padding-top: 52px; /* increased from 30px to fit the taller top bar */
+        padding-top: 42px; /* controls bar height on mobile */
     }
     #controls-bar {
         top: 0;
@@ -1268,12 +1268,12 @@ body.room-mode #gif-container {
         right: 0;
         bottom: auto;
         width: auto;
-        height: 52px;
+        height: 42px;
         flex-direction: row;
         justify-content: flex-end;
         align-items: center;
         gap: 14px;
-        padding: 0 16px;
+        padding: 0 30px; /* 30px right = aligns with frame-inner right edge */
         border-radius: 0;
     }
     .icon-button {
@@ -1287,11 +1287,10 @@ body.room-mode #gif-container {
     #info-toggle img {
         transform: none;
     }
-    /* Right-panel (vertical border strip) and custom scrollbar are replaced
-       by the top bar layout on mobile. */
-    #right-panel,
-    #custom-scrollbar {
-        display: none;
+    /* Drive knob: explicitly size to 30×30 to match sibling icon-buttons. */
+    #drive-knob {
+        width: 30px;
+        height: 30px;
     }
 }
 

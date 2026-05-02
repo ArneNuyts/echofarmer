@@ -146,6 +146,28 @@ function getAudioContext() {
     return _audioCtx;
 }
 
+// ── Pre-decoded audio buffer cache ─────────────────────────────────────────
+// AudioBufferSourceNode has near-zero startup latency compared to HTMLAudioElement.
+// We fetch + decode every sample in the background as soon as its src is known.
+// decodeAudioData works on a suspended AudioContext, so loading can start
+// immediately (before the first user gesture).
+const _bufferCache = new Map(); // src -> AudioBuffer | null
+function _loadBuffer(src) {
+    if (_bufferCache.has(src)) return Promise.resolve(_bufferCache.get(src));
+    // Start loading immediately; store the promise so parallel calls share it.
+    const p = fetch(src)
+        .then(r => r.arrayBuffer())
+        .then(ab => {
+            const ctx = getAudioContext();
+            return ctx ? ctx.decodeAudioData(ab) : null;
+        })
+        .then(buf => { _bufferCache.set(src, buf); return buf; })
+        .catch(() => { _bufferCache.set(src, null); return null; });
+    // Temporarily store the promise so duplicate calls get the same one.
+    _bufferCache.set(src, p);
+    return p;
+}
+
 function _makeDriveCurve(amount) {
     // Warm tape-style saturation: gentle soft-clip with slight even-harmonic
     // asymmetry for a tube-like character (rather than harsh overdrive).
@@ -1158,6 +1180,8 @@ class GifSampler {
                     source.connect(getLimiter());
                 } catch (e) {}
             }
+            // Pre-decode in the background for zero-latency playback via AudioBufferSourceNode.
+            _loadBuffer(src);
             return a;
         });
         const audio = audioPool[0];
@@ -1169,6 +1193,8 @@ class GifSampler {
             animatedImg: animatedImg,
             audio: audio,
             audioPool: audioPool,
+            audioSources: audioSources, // parallel src strings for buffer cache lookup
+            activeBufferNode: null,     // AudioBufferSourceNode currently playing (if any)
             isPlaying: false,
             isDragging: false,
             dragStartTime: 0,
@@ -1421,40 +1447,65 @@ class GifSampler {
         gifData.animatedImg.src = '';
         gifData.animatedImg.src = src;
         
-        // Pick audio: random from pool if multiple, else the single one
+        // Pick audio index: random from pool if multiple, else 0
         const pool = gifData.audioPool || [gifData.audio];
-        const audio = pool.length > 1
-            ? pool[Math.floor(Math.random() * pool.length)]
-            : pool[0];
+        const sources = gifData.audioSources || [];
+        const idx = pool.length > 1 ? Math.floor(Math.random() * pool.length) : 0;
+        const audio = pool[idx];
+        const audioSrc = sources[idx] || '';
 
-        // Stop any previously playing audio from the pool
-        pool.forEach(a => { if (a !== audio && !a.paused) { a.pause(); a.currentTime = 0; } });
+        // Stop everything currently playing for this gif
+        pool.forEach((a, i) => { if (i !== idx && !a.paused) { a.pause(); a.currentTime = 0; } });
+        if (gifData.activeBufferNode) {
+            try { gifData.activeBufferNode.stop(); } catch (_) {}
+            gifData.activeBufferNode = null;
+        }
+        if (gifData.hideOnAudioEnd && gifData.activeAudio) {
+            gifData.activeAudio.removeEventListener('ended', gifData.hideOnAudioEnd);
+            gifData.activeAudio = null;
+        }
 
-        // Play audio — ensure AudioContext is running first (required when audio
-        // is routed through Web Audio; on iOS the context starts suspended).
-        audio.currentTime = 0;
+        // Callback that hides the gif once playback ends
+        const hideOnEnd = () => {
+            gifData.placeholder.style.display = 'block';
+            gifData.animatedImg.style.display = 'none';
+        };
+        gifData.hideOnAudioEnd = hideOnEnd;
+
         const ctx = getAudioContext();
+
+        // ── Prefer AudioBufferSourceNode: zero startup latency, works with drive chain ──
+        // The buffer may have been decoded in the background while the page was loading.
+        const maybeBuf = audioSrc ? _bufferCache.get(audioSrc) : undefined;
+        // maybeBuf is an AudioBuffer if resolved, a Promise if still decoding, or undefined
+        if (ctx && maybeBuf instanceof AudioBuffer) {
+            const doPlayBuffer = () => {
+                const bufSrc = ctx.createBufferSource();
+                bufSrc.buffer = maybeBuf;
+                bufSrc.connect(getLimiter());
+                bufSrc.start(0);
+                bufSrc.onended = hideOnEnd;
+                gifData.activeBufferNode = bufSrc;
+            };
+            if (ctx.state !== 'running') {
+                ctx.resume().then(doPlayBuffer).catch(doPlayBuffer);
+            } else {
+                doPlayBuffer();
+            }
+            return;
+        }
+
+        // ── Fallback: HTMLAudioElement (used on first tap before buffer is decoded,
+        //    or if decoding failed). Still routed through Web Audio graph. ──
+        gifData.activeAudio = audio;
+        audio.currentTime = 0;
         const doPlay = () => { const p = audio.play(); if (p) p.catch(() => {}); };
         if (ctx && ctx.state !== 'running') {
-            // Resume is async but iOS allows play() in Promise microtasks that
-            // originate from a user gesture handler (the taint propagates).
             ctx.resume().then(doPlay).catch(doPlay);
         } else {
             doPlay();
         }
-        
-        // Remove old ended listener if it exists (prevent duplicates)
-        if (gifData.hideOnAudioEnd && gifData.activeAudio) {
-            gifData.activeAudio.removeEventListener('ended', gifData.hideOnAudioEnd);
-        }
-        gifData.activeAudio = audio;
-        
-        // Auto-hide when audio ends
-        gifData.hideOnAudioEnd = () => {
-            gifData.placeholder.style.display = 'block';
-            gifData.animatedImg.style.display = 'none';
-        };
-        audio.addEventListener('ended', gifData.hideOnAudioEnd);
+        audio.addEventListener('ended', hideOnEnd);
     }
 }
 
@@ -2498,6 +2549,7 @@ function createVideoPad() {
         if (ytPlayer) { try { ytPlayer.destroy(); } catch (_) {} }
         document.removeEventListener('keydown', keydownHandler);
         document.removeEventListener('keyup', keyupHandler);
+        setHoverInfo(''); // clear any lingering tooltip before the element is removed
         pad.remove();
     });
 
