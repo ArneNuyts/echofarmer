@@ -105,8 +105,9 @@ if (VIEW_MODE === 'flat') {
 // Lock state for dragging
 let isDraggingLocked = false;
 
-// Info-float toggle state (default on, persisted)
-let infoFloatEnabled = (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
+// Info-float toggle state (default on, persisted on desktop only)
+// On mobile we always default to on (toasts) regardless of stored state.
+let infoFloatEnabled = isMobile ? true : (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
 
 let _scrollbarUpdate = null; // exposed by setupCustomScrollbar so room scroll can retrigger it
 let _syncFloorHeight = null; // exposed by room init so fonts.ready can re-measure
@@ -832,24 +833,14 @@ class GifSampler {
     }
 
     setupAudioUnlock() {
-        // Prime audio context + all audio elements on first user interaction.
-        // iOS requires play() to be called inside a synchronous user-gesture handler
-        // at least once per audio element — only then can it play with zero latency later.
+        // Resume the Web Audio context on the first user gesture.
+        // iOS creates AudioContexts in 'suspended' state and requires a gesture
+        // to start them. Once resumed, it stays running for the session.
         const tryUnlockAudio = () => {
-            // Resume the shared Web Audio context
             const ctx = getAudioContext();
             if (ctx && ctx.state === 'suspended') {
                 ctx.resume().catch(() => {});
             }
-            // Prime every gif audio element: play() then immediately pause()
-            // so the browser unlocks each element for instant future playback.
-            this.gifs.forEach(gifData => {
-                const pool = gifData.audioPool || [];
-                pool.forEach(a => {
-                    const p = a.play();
-                    if (p) p.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
-                });
-            });
             document.removeEventListener('click', tryUnlockAudio);
             document.removeEventListener('touchstart', tryUnlockAudio);
             document.removeEventListener('keydown', tryUnlockAudio);
@@ -1431,11 +1422,17 @@ class GifSampler {
         // Stop any previously playing audio from the pool
         pool.forEach(a => { if (a !== audio && !a.paused) { a.pause(); a.currentTime = 0; } });
 
-        // Play audio
+        // Play audio — ensure AudioContext is running first (required when audio
+        // is routed through Web Audio; on iOS the context starts suspended).
         audio.currentTime = 0;
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => {});
+        const ctx = getAudioContext();
+        const doPlay = () => { const p = audio.play(); if (p) p.catch(() => {}); };
+        if (ctx && ctx.state !== 'running') {
+            // Resume is async but iOS allows play() in Promise microtasks that
+            // originate from a user gesture handler (the taint propagates).
+            ctx.resume().then(doPlay).catch(doPlay);
+        } else {
+            doPlay();
         }
         
         // Remove old ended listener if it exists (prevent duplicates)
@@ -1737,7 +1734,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wire up the add-video button
     const addVideoBtn = document.getElementById('add-video');
-    if (addVideoBtn) addVideoBtn.addEventListener('click', createVideoPad);
+    if (addVideoBtn) {
+        const addVideoImg = addVideoBtn.querySelector('img');
+        const PLUS_NORMAL = 'icons/SVG-STATES/NORMAL/plus.svg';
+        const PLUS_HOVER   = 'icons/SVG-STATES/HOVER/plus.svg';
+        addVideoBtn.addEventListener('click', createVideoPad);
+        // Show pressed (hover) state while held, return to normal on release
+        const pressAdd = () => { if (addVideoImg) addVideoImg.src = PLUS_HOVER; };
+        const releaseAdd = () => { if (addVideoImg) addVideoImg.src = PLUS_NORMAL; };
+        addVideoBtn.addEventListener('mousedown', pressAdd);
+        addVideoBtn.addEventListener('mouseup', releaseAdd);
+        addVideoBtn.addEventListener('mouseleave', releaseAdd);
+        addVideoBtn.addEventListener('touchstart', (e) => { pressAdd(); }, { passive: true });
+        addVideoBtn.addEventListener('touchend', releaseAdd);
+        addVideoBtn.addEventListener('touchcancel', releaseAdd);
+    }
 
     // Wire up the info-float toggle button
     const infoToggleBtn = document.getElementById('info-toggle');
@@ -1774,7 +1785,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('mouseup', releasePress);
         infoToggleBtn.addEventListener('click', () => {
             infoFloatEnabled = !infoFloatEnabled;
-            try { localStorage.setItem('infoFloat', infoFloatEnabled); } catch(e) {}
+            // Only persist toggle state on desktop; mobile always resets to on at load.
+            if (!isMobile) { try { localStorage.setItem('infoFloat', infoFloatEnabled); } catch(e) {} }
             refresh();
             if (!infoFloatEnabled) {
                 const floatEl = document.getElementById('info-float');
@@ -2057,7 +2069,7 @@ function createVideoPad() {
 
     function setFaderPos(v) {
         volValue = Math.max(0, Math.min(1, v));
-        faderKnob.style.top = `calc(${(1 - volValue) * 100}% - 3px)`;
+        faderKnob.style.top = `calc(${(1 - volValue) * 100}% - 5px)`;
         meterFillL.style.height = `${volValue * 100}%`;
         meterFillR.style.height = `${volValue * 100}%`;
         videoEl.volume = volValue;
@@ -2086,9 +2098,10 @@ function createVideoPad() {
     }, { passive: false });
     document.addEventListener('touchmove', (e) => {
         if (!faderDragging) return;
+        e.preventDefault();
         const rect = meterWrap.getBoundingClientRect();
         setFaderPos(1 - (e.touches[0].clientY - rect.top) / rect.height);
-    });
+    }, { passive: false });
     document.addEventListener('touchend', () => { faderDragging = false; });
 
     const volLabel = document.createElement('div');

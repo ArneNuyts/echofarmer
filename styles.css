@@ -1044,6 +1044,7 @@ body.room-mode #gif-container {
     cursor: ns-resize;
     user-select: none;
     -webkit-user-select: none;
+    touch-action: none;
 }
 .video-meter-bars {
     position: absolute;
@@ -1068,13 +1069,15 @@ body.room-mode #gif-container {
 }
 .video-fader-knob {
     position: absolute;
-    left: -3px;
-    right: -3px;
-    height: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
     background: #dfdcd8;
     border: 1px solid #1b1916;
-    border-radius: 2px;
+    border-radius: 50%;
     cursor: ns-resize;
+    touch-action: none;
     z-index: 2;
 }
 
@@ -1222,27 +1225,35 @@ body.room-mode #gif-container {
 }
 
 /* ── Mobile toast hints ────────────────────────────────────────────────────── */
-/* Replaces the cursor-following hover float on touch devices.                 */
+/* Replaces the cursor-following hover float on touch devices.
+   Matches the desktop #info-float appearance (light box, dark border).        */
 #info-toast {
     position: fixed;
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(28, 25, 22, 0.92);
-    color: #dfdcd8;
-    padding: 7px 14px;
-    border-radius: 4px;
-    font-size: 11px;
+    max-width: 220px;
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    padding: 8px 12px;
+    font-size: 13px;
     font-family: 'Geist', sans-serif;
-    max-width: 82vw;
-    text-align: center;
+    font-weight: 450;
+    color: #1b1916;
+    line-height: 1.6;
     white-space: nowrap;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s;
     pointer-events: none;
     z-index: 9999;
 }
 #info-toast.visible { opacity: 1; }
+
+/* Never show the cursor-follow info float on touch-primary devices */
+@media (hover: none) {
+    #info-float { display: none !important; }
+}
 
 /* ── Mobile video pad ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
