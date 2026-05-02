@@ -108,9 +108,6 @@ let isDraggingLocked = false;
 // Info-float toggle state (default on, persisted)
 let infoFloatEnabled = (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
 
-// Handle for forcing a scroll-state refresh after mode toggles
-let _roomScrollUpdate = null;
-let _syncFloorHeight = null;
 let _scrollbarUpdate = null; // exposed by setupCustomScrollbar so room scroll can retrigger it
 
 // Mouse tracking for info-float positioning
@@ -556,10 +553,9 @@ function setupRoomScrollOpen() {
     const floorSection = frameInner.querySelector('.floor-section');
     const headerCanvas = frameInner.querySelector('.header-canvas');
     // Publish floor-section height as a CSS var so #table-content min-height
-    // reserves enough scroll room for phase 2.
-    // In open-bottom mode the floor lands 15px above frame-inner.bottom at end-of-scroll
-    // (so its bottom sits at the top of the bottom frame bar), so the scroll range
-    // it needs is _floorH - 15 instead of _floorH.
+    // reserves enough scroll room for phase 2. The floor lands 15px above
+    // frame-inner.bottom at end-of-scroll (so its bottom sits at the top of
+    // the bottom frame bar), so the scroll range it needs is _floorH - 15.
     let _floorH = 0;
     const PEEK = 15;
     const syncFloorHeight = () => {
@@ -569,7 +565,6 @@ function setupRoomScrollOpen() {
     };
     syncFloorHeight();
     window.addEventListener('resize', syncFloorHeight);
-    _syncFloorHeight = syncFloorHeight;
     // Start with the back wall pulled forward to z=0 (flat-table look).
     frameInner.style.setProperty('--back-z', '0px');
     frameInner.style.setProperty('--back-line-w', '1px');
@@ -588,8 +583,8 @@ function setupRoomScrollOpen() {
         frameInner.style.setProperty('--back-line-w', lineW + 'px');
         setReverbAmount(t);
         // Phase 2: slide the room + header + floor section up (all together, floor stays attached).
-        // No constant offset — the open-bottom peek is achieved by margin-bottom on frame-inner,
-        // not by translating elements. This way the top row of cells is fully visible at refresh.
+        // The peek at the bottom is achieved by margin-bottom on frame-inner, not by translating
+        // elements — so the top row of cells stays fully visible at refresh.
         const extra = Math.max(0, st - depth);
         const ty = `translateY(${-extra}px)`;
         if (roomWalls) roomWalls.style.transform = ty;
@@ -615,7 +610,6 @@ function setupRoomScrollOpen() {
         // Retrigger scrollbar thumb calc now so it uses the new track height.
         if (_scrollbarUpdate) _scrollbarUpdate();
     };
-    _roomScrollUpdate = update;
     const onScroll = () => { if (raf === null) raf = requestAnimationFrame(update); };
     scroller.addEventListener('scroll', onScroll, { passive: true });
     // The gif container is reparented out of #table-scroll, so a wheel event
