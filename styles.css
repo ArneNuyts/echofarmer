@@ -45,12 +45,7 @@ body.flat-mode {
 
 /* #info-toggle.info-off uses a dedicated icon (set by JS); no opacity tint. */
 
-#open-bottom-toggle.open-bottom-off {
-    opacity: 0.3;
-}
-
 #bottom-frame-bar {
-    display: none;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -62,73 +57,11 @@ body.flat-mode {
     pointer-events: none;
 }
 
-/* ── Open-bottom mode ── */
-body.open-bottom-mode #frame-wrapper {
-    padding-bottom: 0;
-}
-body.open-bottom-mode #frame-inner {
-    margin-bottom: 45px;
-    overflow: visible;
-    /* No bottom border — the dark frame border continues down through the floor's L/R borders */
-    border-bottom: none;
-    /* Square the bottom corners so the L/R borders meet the floor's top edge
-       in a straight line. The floor itself keeps the bottom-left radius at
-       its own bottom-left corner. */
-    border-radius: 5px 5px 0 0;
-    /* Allow the floor's L/R borders (at left:-2/right:-2) and bottom overflow to render */
-    clip-path: inset(0 -2px -100vh -2px round 5px 5px 0 0);
-}
-/* Guarantee the inner frame border stays on top of all transformed/composited
-   children (header-canvas, room-walls, etc.) by re-drawing it via an overlay
-   pseudo-element with a high z-index. Otherwise the top border can visually
-   disappear when children translate up during scroll. */
-body.open-bottom-mode #frame-inner::after {
-    content: '';
-    position: absolute;
-    /* Only redraw the TOP edge of the frame, on top of the real border, so
-       it stays visible above transformed children (header-canvas, etc.).
-       Drawing L/R/BL here too would double-up those edges and make them
-       look thicker than the floor's matching borders. */
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    height: 2px;
-    background: #595147;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    pointer-events: none;
-    z-index: 100;
-}
-body.open-bottom-mode .floor-section {
-    /* Extend 2px outward on each side so the floor's L/R borders sit on the same
-       pixels as the frame-inner's L/R borders (continuous dark frame line). */
-    left: -2px;
-    right: -2px;
-    /* Pull the floor up by 2px so its top border lands exactly on the bottom
-       edge of the frame-inner, covering the wall-back's last grid line (which
-       sits there at rest, doubling the stroke). */
-    margin-top: -2px;
-    border-width: 1.5px 2px 2px 2px;
-    border-radius: 0 0 0 5px;
-}
-body.open-bottom-mode #right-panel {
-    /* At rest: extends to the window bottom. JS animates this up to 32px
-       at full scroll so it sits on the dark inner frame line at the top of
-       the bottom frame bar. */
-    bottom: 0;
-}
-body.open-bottom-mode #custom-scrollbar {
-    bottom: 11px; /* 11px inset matches top gap; grows to 41px in JS as bottom bar slides in */
-}
-body.open-bottom-mode #bottom-frame-bar {
-    display: block;
-}
-
 #right-panel {
     position: fixed;
     right: 6px;
     top: 30px;
-    bottom: 30px;
+    bottom: 0;
     width: 24px;
     background: #595147;
     border-radius: 0px 5px 5px 0px;
@@ -227,7 +160,7 @@ body.open-bottom-mode #bottom-frame-bar {
     width: 100%;
     height: 100%;
     background-color: #7c7164;
-    padding: 30px;
+    padding: 30px 30px 0 30px;
     display: flex;
     flex-direction: column;
     z-index: 0;
@@ -274,8 +207,11 @@ body.room-mode #gif-container {
     position: relative;
     flex: 1;
     border: 2px solid #595147;
-    border-radius: 5px 5px 0px 5px;
-    overflow: hidden;
+    border-radius: 5px 5px 0 0;
+    border-bottom: none;
+    overflow: visible;
+    margin-bottom: 45px;
+    clip-path: inset(0 -2px -100vh -2px round 5px 5px 0 0);
     background: #9b9183;
     /* 3D room perspective. Vanishing point at center of the frame. */
     --persp: 600px;
@@ -293,6 +229,20 @@ body.room-mode #gif-container {
     --squares-bg: none;
     perspective: var(--persp);
     perspective-origin: 50% 50%;
+}
+/* Re-draw the top border above all transformed children so it never disappears during scroll. */
+#frame-inner::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    height: 2px;
+    background: #595147;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    pointer-events: none;
+    z-index: 100;
 }
 
 /* 3D room layer: holds the four walls + a fake back wall.
@@ -508,13 +458,15 @@ body.room-mode #gif-container {
 .floor-section {
     position: absolute;
     top: 100%;
-    left: 0;
-    right: 0;
+    left: -2px;
+    right: -2px;
+    margin-top: -2px;
     padding: 30px;
     background: #b3aba0;
     border-style: solid;
-    border-width: 1.5px 0px 0px 0px;
+    border-width: 1.5px 2px 2px 2px;
     border-color: #595147;
+    border-radius: 0 0 0 5px;
     z-index: 6;
     pointer-events: auto;
     will-change: transform;
@@ -678,7 +630,7 @@ body.room-mode #gif-container {
 #custom-scrollbar {
     position: fixed;
     top: 41px;  /* fallback; overridden by JS to right-panel.top + 11px */
-    bottom: 41px;
+    bottom: 11px;
     right: 14px;
     width: 8px;
     z-index: 101;

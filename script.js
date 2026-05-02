@@ -108,9 +108,6 @@ let isDraggingLocked = false;
 // Info-float toggle state (default on, persisted)
 let infoFloatEnabled = (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
 
-// Open-bottom mode: frame has no bottom edge; floor section revealed by scrolling
-let openBottomEnabled = (() => { try { return localStorage.getItem('openBottom') === 'true'; } catch(e) { return false; } })();
-
 // Handle for forcing a scroll-state refresh after mode toggles
 let _roomScrollUpdate = null;
 let _syncFloorHeight = null;
@@ -567,8 +564,7 @@ function setupRoomScrollOpen() {
     const PEEK = 15;
     const syncFloorHeight = () => {
         _floorH = floorSection ? floorSection.offsetHeight : 0;
-        const isOpen = document.body.classList.contains('open-bottom-mode');
-        const effective = Math.max(0, _floorH - (isOpen ? PEEK : 0));
+        const effective = Math.max(0, _floorH - PEEK);
         frameInner.style.setProperty('--floor-h', effective + 'px');
     };
     syncFloorHeight();
@@ -600,34 +596,24 @@ function setupRoomScrollOpen() {
         if (headerCanvas) headerCanvas.style.transform = ty;
         if (floorSection) floorSection.style.transform = ty;
         if (gifContainer) gifContainer.style.transform = ty;
-        // Open-bottom mode: slide the bottom frame bar in during the last 30px of scroll,
+        // Slide the bottom frame bar in during the last 30px of scroll,
         // tracking floor.bottom so the dark line stays continuous with the floor's L/R borders.
         // Also grow the scrollbar track bottom to keep the same 11px gap from the bar.
         const scrollBarEl = document.getElementById('custom-scrollbar');
         const rightPanelEl = document.getElementById('right-panel');
-        if (document.body.classList.contains('open-bottom-mode')) {
-            const totalExtra = Math.max(0, _floorH - PEEK);
-            const barEnter = Math.max(0, totalExtra - 30);
-            const barProgress = extra <= barEnter ? 0 : Math.min(1, (extra - barEnter) / 30);
-            if (bottomFrameBar) bottomFrameBar.style.transform = `translateY(${(1 - barProgress) * 30}px)`;
-            // Scrollbar bottom: 11px inset from the right-panel bottom (0px from window),
-            // growing by 30px as the bottom frame bar slides in so the thumb never overlaps it.
-            if (scrollBarEl) scrollBarEl.style.bottom = (11 + barProgress * 30) + 'px';
-            // Right-panel bottom: tracks the floor's visible bottom border so
-            // the panel ends right at the inner frame line as soon as it
-            // appears (not only during the final bar-slide).
-            // Floor bottom distance from window bottom = 45 + extra - _floorH.
-            // Add 2.5px to land just above the dark border line.
-            const panelTarget = 45 + extra - _floorH + 2.5;
-            if (rightPanelEl) rightPanelEl.style.bottom = Math.max(0, panelTarget) + 'px';
-            // Retrigger scrollbar thumb calc now so it uses the new track height
-            // (reading clientHeight after style change forces a synchronous reflow).
-            if (_scrollbarUpdate) _scrollbarUpdate();
-        } else {
-            if (bottomFrameBar) bottomFrameBar.style.transform = 'translateY(100%)';
-            if (scrollBarEl) scrollBarEl.style.bottom = '';
-            if (rightPanelEl) rightPanelEl.style.bottom = '';
-        }
+        const totalExtra = Math.max(0, _floorH - PEEK);
+        const barEnter = Math.max(0, totalExtra - 30);
+        const barProgress = extra <= barEnter ? 0 : Math.min(1, (extra - barEnter) / 30);
+        if (bottomFrameBar) bottomFrameBar.style.transform = `translateY(${(1 - barProgress) * 30}px)`;
+        // Scrollbar bottom: 11px inset from the right-panel bottom (0px from window),
+        // growing by 30px as the bottom frame bar slides in so the thumb never overlaps it.
+        if (scrollBarEl) scrollBarEl.style.bottom = (11 + barProgress * 30) + 'px';
+        // Right-panel bottom: tracks the floor's visible bottom border so
+        // the panel ends right at the inner frame line as soon as it appears.
+        const panelTarget = 45 + extra - _floorH + 2.5;
+        if (rightPanelEl) rightPanelEl.style.bottom = Math.max(0, panelTarget) + 'px';
+        // Retrigger scrollbar thumb calc now so it uses the new track height.
+        if (_scrollbarUpdate) _scrollbarUpdate();
     };
     _roomScrollUpdate = update;
     const onScroll = () => { if (raf === null) raf = requestAnimationFrame(update); };
@@ -1737,29 +1723,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (infoToggleHover) {
         infoToggleHover.addEventListener('mouseenter', () => setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info'));
         infoToggleHover.addEventListener('mouseleave', () => setHoverInfo(''));
-    }
-
-    // Open-bottom mode toggle
-    const openBottomBtn = document.getElementById('open-bottom-toggle');
-    if (openBottomBtn) {
-        // Apply persisted state immediately (body is still invisible at this point)
-        document.body.classList.toggle('open-bottom-mode', openBottomEnabled);
-        openBottomBtn.classList.toggle('open-bottom-off', !openBottomEnabled);
-        openBottomBtn.addEventListener('click', () => {
-            openBottomEnabled = !openBottomEnabled;
-            try { localStorage.setItem('openBottom', openBottomEnabled); } catch(e) {}
-            document.body.classList.toggle('open-bottom-mode', openBottomEnabled);
-            openBottomBtn.classList.toggle('open-bottom-off', !openBottomEnabled);
-            if (!openBottomEnabled) {
-                const bar = document.getElementById('bottom-frame-bar');
-                if (bar) bar.style.transform = 'translateY(100%)';
-            }
-            if (_syncFloorHeight) _syncFloorHeight();
-            if (_roomScrollUpdate) _roomScrollUpdate();
-            setHoverInfo(openBottomEnabled ? 'Close bottom edge' : 'Open bottom edge');
-        });
-        openBottomBtn.addEventListener('mouseenter', () => setHoverInfo(openBottomEnabled ? 'Close bottom edge' : 'Open bottom edge'));
-        openBottomBtn.addEventListener('mouseleave', () => setHoverInfo(''));
     }
 
     // Scrollbar hover info
