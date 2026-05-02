@@ -802,7 +802,7 @@ body.room-mode #gif-container {
     left: 50px;
     z-index: 1000;
     pointer-events: auto;
-    width: 270px;
+    width: 240px;
     background: #7c7164;
     border: 2px solid #595147;
     border-radius: 6px;
@@ -974,6 +974,7 @@ body.room-mode #gif-container {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
+    touch-action: none;
 }
 .video-scrub::-webkit-slider-thumb {
     -webkit-appearance: none;
@@ -1241,13 +1242,26 @@ body.room-mode #gif-container {
 /* ── Mobile video pad ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .video-pad {
-        width: min(270px, 90vw);
+        width: min(240px, 90vw);
     }
     .video-stage {
         height: 110px;
     }
     .video-layout {
-        grid-template-rows: 18px 110px 10px 18px;
+        grid-template-rows: 18px 110px 20px 18px;
+    }
+    /* Taller scrub track on mobile for easier grabbing */
+    .video-scrub {
+        height: 20px;
+        border-radius: 5px;
+    }
+    .video-scrub::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+    }
+    .video-scrub::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
     }
     /* Play and map-key buttons are replaced by hold-on-stage on mobile */
     .video-trigger,

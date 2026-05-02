@@ -1145,15 +1145,18 @@ class GifSampler {
             a.src = src;
             a.preload = 'auto';
             a.volume = 1.0;
-            a.crossOrigin = 'anonymous';
-            // Route through shared limiter to prevent clipping
-            const ctx = getAudioContext();
-            if (ctx) {
-                try {
-                    const source = ctx.createMediaElementSource(a);
-                    source.connect(getLimiter());
-                } catch (e) {
-                    // If routing fails, audio still plays directly to output
+            // On mobile, skip Web Audio routing: createMediaElementSource hijacks
+            // the element's output so it only plays through the AudioContext. If
+            // that context is suspended (which iOS often keeps it until a gesture),
+            // nothing is heard. Play natively on mobile — no limiter/drive but audio works.
+            if (!isMobile) {
+                a.crossOrigin = 'anonymous';
+                const ctx = getAudioContext();
+                if (ctx) {
+                    try {
+                        const source = ctx.createMediaElementSource(a);
+                        source.connect(getLimiter());
+                    } catch (e) {}
                 }
             }
             return a;
@@ -1717,6 +1720,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fetch and display upcoming shows from Bandsintown
     fetchBandsintown();
+    // Lock table-scroll while the user is touching a video pad so that
+    // scrubbing / fader gestures don't accidentally scroll the room.
+    if (scroller) {
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.video-pad')) scroller.style.overflowY = 'hidden';
+        }, { passive: true });
+        document.addEventListener('touchend', () => {
+            scroller.style.overflowY = 'scroll';
+        }, { passive: true });
+    }
+
     // Wire up the add-video button
     const addVideoBtn = document.getElementById('add-video');
     if (addVideoBtn) addVideoBtn.addEventListener('click', createVideoPad);
