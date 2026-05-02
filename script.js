@@ -2180,7 +2180,7 @@ function createVideoPad() {
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
     let timeDragY = null;
     let timeDragStart = null;
-    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down (or use arrow keys) to set sample start. Hold shift for fine, cmd/ctrl+shift for ultra-fine control.'));
+    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down (or use arrow keys) to set sample start. Hold shift for fine, shift+alt/option for ultra-fine control.'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
     timeLabel.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -2194,8 +2194,8 @@ function createVideoPad() {
     document.addEventListener('mousemove', (e) => {
         if (timeDragY === null) return;
         // Read modifiers live so the user can press/release them mid-drag.
-        // shift = 0.1s/px (fine), cmd/ctrl+shift = 0.01s/px (ultra-fine), default = 1s/px.
-        const ultra = e.shiftKey && (e.metaKey || e.ctrlKey);
+        // shift = 0.1s/px (fine), shift+alt/option = 0.01s/px (ultra-fine), default = 1s/px.
+        const ultra = e.shiftKey && e.altKey;
         const rate = ultra ? 0.01 : (e.shiftKey ? 0.1 : 1);
         const delta = (timeDragY - e.clientY) * rate;
         const target = timeDragStart + delta;
@@ -2294,8 +2294,8 @@ function createVideoPad() {
             const isVert  = e.key === 'ArrowUp'    || e.key === 'ArrowDown';
             if (isHoriz || isVert) {
                 const dir = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : -1;
-                // Same precision tiers as the drag: shift = 0.1s, cmd/ctrl+shift = 0.01s.
-                const ultra = e.shiftKey && (e.metaKey || e.ctrlKey);
+                // Same precision tiers as the drag: shift = 0.1s, shift+alt/option = 0.01s.
+                const ultra = e.shiftKey && e.altKey;
                 const step = ultra ? 0.01 : (e.shiftKey ? 0.1 : 1);
                 markUserSeeking();
                 if (ytPlayer && ytReady) {
