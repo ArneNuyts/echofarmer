@@ -832,18 +832,24 @@ class GifSampler {
     }
 
     setupAudioUnlock() {
-        // Prime audio context on first user interaction
+        // Prime audio context + all audio elements on first user interaction.
+        // iOS requires play() to be called inside a synchronous user-gesture handler
+        // at least once per audio element — only then can it play with zero latency later.
         const tryUnlockAudio = () => {
-            // Create a dummy audio element and play it to unlock the audio context
-            const dummy = new Audio();
-            dummy.volume = 0;
-            dummy.play().catch(() => {});
-            // Resume the shared Web Audio context (needed for limiter routing)
+            // Resume the shared Web Audio context
             const ctx = getAudioContext();
             if (ctx && ctx.state === 'suspended') {
                 ctx.resume().catch(() => {});
             }
-            // Remove listeners after attempt
+            // Prime every gif audio element: play() then immediately pause()
+            // so the browser unlocks each element for instant future playback.
+            this.gifs.forEach(gifData => {
+                const pool = gifData.audioPool || [];
+                pool.forEach(a => {
+                    const p = a.play();
+                    if (p) p.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+                });
+            });
             document.removeEventListener('click', tryUnlockAudio);
             document.removeEventListener('touchstart', tryUnlockAudio);
             document.removeEventListener('keydown', tryUnlockAudio);
@@ -1142,22 +1148,20 @@ class GifSampler {
             : [config.audio];
         const audioPool = audioSources.map(src => {
             const a = new Audio();
+            // crossOrigin must be set before src so the CORS request is made correctly
+            a.crossOrigin = 'anonymous';
             a.src = src;
             a.preload = 'auto';
             a.volume = 1.0;
-            // On mobile, skip Web Audio routing: createMediaElementSource hijacks
-            // the element's output so it only plays through the AudioContext. If
-            // that context is suspended (which iOS often keeps it until a gesture),
-            // nothing is heard. Play natively on mobile — no limiter/drive but audio works.
-            if (!isMobile) {
-                a.crossOrigin = 'anonymous';
-                const ctx = getAudioContext();
-                if (ctx) {
-                    try {
-                        const source = ctx.createMediaElementSource(a);
-                        source.connect(getLimiter());
-                    } catch (e) {}
-                }
+            // Route through Web Audio on all devices so the drive/limiter chain applies.
+            // On iOS the AudioContext starts suspended; it is resumed on the first touch
+            // gesture (in the gif touchstart handler) before audio.play() is called.
+            const ctx = getAudioContext();
+            if (ctx) {
+                try {
+                    const source = ctx.createMediaElementSource(a);
+                    source.connect(getLimiter());
+                } catch (e) {}
             }
             return a;
         });
