@@ -1366,7 +1366,13 @@ class GifSampler {
         let isActiveTouchOnElement = false;
 
         element.addEventListener('touchstart', (e) => {
-            const touch = e.touches[0];
+            // Use changedTouches[0]: the touch that triggered THIS event.
+            // e.touches[0] is the OLDEST active touch on the page, so when a
+            // second finger lands on a different gif while the first is still
+            // held, e.touches[0] would still be the first finger and the
+            // second gif would never activate (breaks multi-touch polyphony).
+            const touch = e.changedTouches[0];
+            const touchId = touch.identifier;
             // Only respond to touches on non-transparent pixels
             if (!this.isPointOnGif(gifData, touch.clientX, touch.clientY)) return;
             e.preventDefault();
@@ -1400,11 +1406,19 @@ class GifSampler {
             }, 200);
 
             // Setup document-level touch handlers
+            // Find this gesture's specific touch by identifier so multi-touch
+            // (other fingers on other gifs) doesn't hijack our move/end.
+            const findOurTouch = (touchList) => {
+                for (let i = 0; i < touchList.length; i++) {
+                    if (touchList[i].identifier === touchId) return touchList[i];
+                }
+                return null;
+            };
             const onTouchMove = (e) => {
                 if (!isActiveTouchOnElement) return;
-                
+                const touch = findOurTouch(e.touches);
+                if (!touch) return;
                 e.preventDefault();
-                const touch = e.touches[0];
                 
                 const deltaX = touch.clientX - gifData.touchStartX;
                 const deltaY = touch.clientY - gifData.touchStartY;
@@ -1428,7 +1442,9 @@ class GifSampler {
 
             const onTouchEnd = (e) => {
                 if (!isActiveTouchOnElement) return;
-                
+                // Only react when OUR finger is the one that lifted.
+                if (!findOurTouch(e.changedTouches)) return;
+
                 isActiveTouchOnElement = false;
                 clearTimeout(longPressTimeout);
                 
@@ -2167,7 +2183,9 @@ function createVideoPad() {
 
     function setFaderPos(v) {
         volValue = Math.max(0, Math.min(1, v));
-        faderKnob.style.top = `calc(${(1 - volValue) * 100}% - 5px)`;
+        // translate(-50%,-50%) keeps the knob centered on `top` regardless of
+        // its size (different on desktop vs mobile via CSS).
+        faderKnob.style.top = `${(1 - volValue) * 100}%`;
         meterFillL.style.height = `${volValue * 100}%`;
         meterFillR.style.height = `${volValue * 100}%`;
         videoEl.volume = volValue;
