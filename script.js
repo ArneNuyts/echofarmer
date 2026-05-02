@@ -2004,6 +2004,9 @@ function createVideoPad() {
         stopYTPoll();
         ytPollInterval = setInterval(() => {
             if (!ytPlayer || !ytReady) return;
+            // Only sync scrub from the player while playing — otherwise the poll
+            // would fight a user drag on the scrub bar by overwriting its value.
+            if (!isPlaying) return;
             try {
                 const dur = ytPlayer.getDuration();
                 const cur = ytPlayer.getCurrentTime();
@@ -2163,14 +2166,12 @@ function createVideoPad() {
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
     let timeDragY = null;
     let timeDragStart = null;
-    let timeDragShift = false;
     timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to set sample start. Hold shift while dragging for finer control.'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
     timeLabel.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
         timeDragY = e.clientY;
-        timeDragShift = e.shiftKey;
         timeDragStart = ytPlayer && ytReady
             ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
             : (videoEl.duration ? videoEl.currentTime : 0);
@@ -2178,7 +2179,8 @@ function createVideoPad() {
     });
     document.addEventListener('mousemove', (e) => {
         if (timeDragY === null) return;
-        const rate = timeDragShift ? 0.01 : 1;
+        // Read shiftKey live so the user can press/release shift mid-drag.
+        const rate = e.shiftKey ? 0.1 : 1;
         const delta = (timeDragY - e.clientY) * rate;
         const target = timeDragStart + delta;
         if (ytPlayer && ytReady) {
@@ -2200,12 +2202,11 @@ function createVideoPad() {
                 try { const d = ytPlayer.getDuration(); if (d > 0) startScrubPos = ytPlayer.getCurrentTime() / d; } catch(_) {}
             }
         }
-        timeDragY = null; timeDragStart = null; timeDragShift = false;
+        timeDragY = null; timeDragStart = null;
         timeLabel.classList.remove('dragging');
     });
     timeLabel.addEventListener('touchstart', (e) => {
         timeDragY = e.touches[0].clientY;
-        timeDragShift = false;
         timeDragStart = ytPlayer && ytReady
             ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
             : (videoEl.duration ? videoEl.currentTime : 0);
