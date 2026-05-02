@@ -2166,7 +2166,7 @@ function createVideoPad() {
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
     let timeDragY = null;
     let timeDragStart = null;
-    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to set sample start. Hold shift while dragging for finer control.'));
+    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to set sample start. Hold shift while dragging for finer control. Or use arrow keys (with shift for fine).'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
     timeLabel.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -2269,6 +2269,35 @@ function createVideoPad() {
         if (keyBinding && document.activeElement !== urlInput && e.key === keyBinding && !keyHeld) {
             keyHeld = true;
             startPlay(); e.preventDefault();
+        }
+        // Arrow-key time scrubbing: only act on the pad the cursor is currently over,
+        // and only when the URL input isn't focused (so typing in the URL still works).
+        if (document.activeElement !== urlInput && pad.matches(':hover')) {
+            const isHoriz = e.key === 'ArrowRight' || e.key === 'ArrowLeft';
+            const isVert  = e.key === 'ArrowUp'    || e.key === 'ArrowDown';
+            if (isHoriz || isVert) {
+                const dir = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : -1;
+                const step = e.shiftKey ? 0.1 : 1; // seconds per press; matches drag scheme
+                if (ytPlayer && ytReady) {
+                    try {
+                        const dur = ytPlayer.getDuration();
+                        if (dur > 0) {
+                            const target = Math.max(0, Math.min(dur, ytPlayer.getCurrentTime() + dir * step));
+                            ytPlayer.seekTo(target, true);
+                            scrub.value = target / dur; updateScrubTrack();
+                            timeLabel.textContent = `${fmt(target)} / ${fmt(dur)}`;
+                        }
+                    } catch(_) {}
+                } else if (videoEl.duration) {
+                    const target = Math.max(0, Math.min(videoEl.duration, videoEl.currentTime + dir * step));
+                    videoEl.currentTime = target;
+                    scrub.value = target / videoEl.duration; updateScrubTrack();
+                    timeLabel.textContent = `${fmt(target)} / ${fmt(videoEl.duration)}`;
+                }
+                // Update cue point so a subsequent trigger snap-back goes here.
+                startScrubPos = parseFloat(scrub.value);
+                e.preventDefault();
+            }
         }
     };
     const keyupHandler = (e) => {
