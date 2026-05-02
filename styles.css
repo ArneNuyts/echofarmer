@@ -1214,3 +1214,44 @@ body.room-mode #gif-container {
 .gif-item.preloaded {
     opacity: 1;
 }
+
+/* ── Mobile toast hints ────────────────────────────────────────────────────── */
+/* Replaces the cursor-following hover float on touch devices.                 */
+#info-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(28, 25, 22, 0.92);
+    color: #dfdcd8;
+    padding: 7px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Geist', sans-serif;
+    max-width: 82vw;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 9999;
+}
+#info-toast.visible { opacity: 1; }
+
+/* ── Mobile video pad ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .video-pad {
+        width: min(270px, 90vw);
+    }
+    .video-stage {
+        height: 110px;
+    }
+    .video-layout {
+        grid-template-rows: 18px 110px 10px 18px;
+    }
+    /* Play and map-key buttons are replaced by hold-on-stage on mobile */
+    .video-trigger,
+    .video-key {
+        display: none;
+    }
+}

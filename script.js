@@ -622,7 +622,42 @@ function setupRoomScrollOpen() {
             scroller.scrollLeft += e.deltaX;
             e.preventDefault();
         }, { passive: false });
+
+        // Forward touch-scroll from gif container to the scroller.
+        // Gif elements call e.stopPropagation() on their touchstart so only
+        // touches in empty areas of the container reach these handlers.
+        let _gcTouchY = null;
+        gifContainer.addEventListener('touchstart', (e) => {
+            _gcTouchY = e.touches[0].clientY;
+        }, { passive: true });
+        gifContainer.addEventListener('touchmove', (e) => {
+            if (_gcTouchY === null) return;
+            const dy = _gcTouchY - e.touches[0].clientY;
+            _gcTouchY = e.touches[0].clientY;
+            scroller.scrollTop += dy;
+        }, { passive: true });
+        gifContainer.addEventListener('touchend', () => { _gcTouchY = null; }, { passive: true });
     }
+
+    // Forward touch-scroll from the floor section to the scroller.
+    // The floor section sits outside #table-scroll so native touch scroll
+    // doesn't reach the scroller when the finger is over the floor.
+    if (floorSection) {
+        let _fsTouchY = null;
+        floorSection.addEventListener('touchstart', (e) => {
+            // Let links/buttons handle their own touch
+            if (e.target.closest('a, button, input')) return;
+            _fsTouchY = e.touches[0].clientY;
+        }, { passive: true });
+        floorSection.addEventListener('touchmove', (e) => {
+            if (_fsTouchY === null) return;
+            const dy = _fsTouchY - e.touches[0].clientY;
+            _fsTouchY = e.touches[0].clientY;
+            scroller.scrollTop += dy;
+        }, { passive: true });
+        floorSection.addEventListener('touchend', () => { _fsTouchY = null; }, { passive: true });
+    }
+
     update();
 }
 
@@ -1292,7 +1327,18 @@ class GifSampler {
             // Only respond to touches on non-transparent pixels
             if (!this.isPointOnGif(gifData, touch.clientX, touch.clientY)) return;
             e.preventDefault();
-            
+            // Stop the event bubbling to the gif container so the container's
+            // touch-to-scroll forwarding doesn't fight this gesture.
+            e.stopPropagation();
+
+            // Unlock AudioContext immediately — must happen inside a direct
+            // user-gesture handler (before any async gap) to work on iOS.
+            const _ctx = getAudioContext();
+            if (_ctx && _ctx.state === 'suspended') _ctx.resume().catch(() => {});
+
+            // Show a brief hint toast on first interaction
+            showToast('Tap to play · Drag to move');
+
             // Start playing audio immediately on touch
             this.activateGif(gifData);
             
@@ -1413,7 +1459,27 @@ function positionInfoFloat(el) {
     el.style.top = y + 'px';
 }
 
+// ── Mobile toast hints ─────────────────────────────────────────────────────
+// On touch devices a brief self-dismissing toast replaces the cursor-following
+// info float (which can't work without a pointer).
+let _toastTimer = null;
+function showToast(text, duration = 2500) {
+    if (!isMobile) return;
+    let toast = document.getElementById('info-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'info-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.classList.add('visible');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
+}
+
 function setHoverInfo(text) {
+    // On touch devices redirect non-empty hints to the toast system.
+    if (isMobile) { if (text) showToast(text); return; }
     const floatEl = document.getElementById('info-float');
     if (!floatEl) return;
     if (!infoFloatEnabled) {
@@ -1919,15 +1985,34 @@ function createVideoPad() {
     // Placeholder shown before any URL is loaded
     const stagePlaceholder = document.createElement('div');
     stagePlaceholder.className = 'video-stage-placeholder';
-    stagePlaceholder.innerHTML =
-        `<div class="ph-list">` +
-        `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
-        `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. That key can now launch the video.</span>` +
-        `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point either...</span>` +
-        `<span class="ph-num"></span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
-        `<span class="ph-num"></span><span class="ph-text ph-sub">...or drag up or down in the timecode box<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
-        `</div>`;
+    if (isMobile) {
+        stagePlaceholder.innerHTML =
+            `<div class="ph-list">` +
+            `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
+            `<span class="ph-num">2.</span><span class="ph-text">Hold the video area to play. Release to stop.</span>` +
+            `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag up\/down in the timecode box<span class="ph-mini-tc">0:42 \/ 3:15</span></span>` +
+            `</div>`;
+    } else {
+        stagePlaceholder.innerHTML =
+            `<div class="ph-list">` +
+            `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
+            `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. That key can now launch the video.</span>` +
+            `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point either...</span>` +
+            `<span class="ph-num"></span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
+            `<span class="ph-num"></span><span class="ph-text ph-sub">...or drag up or down in the timecode box<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
+            `</div>`;
+    }
     stage.appendChild(stagePlaceholder);
+
+    // On mobile: hold the stage to play, release to stop (replaces the PLAY button)
+    if (isMobile) {
+        stage.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startPlay();
+        }, { passive: false });
+        stage.addEventListener('touchend', stopPlay);
+        stage.addEventListener('touchcancel', stopPlay);
+    }
 
     // Stereo meter + fader knob
     let volValue = 0.8;
@@ -1974,6 +2059,19 @@ function createVideoPad() {
     });
     document.addEventListener('mouseup', () => { faderDragging = false; });
     faderKnob.addEventListener('dblclick', () => setFaderPos(0.8));
+
+    // Touch support for fader volume drag
+    faderKnob.addEventListener('touchstart', (e) => {
+        faderDragging = true;
+        e.preventDefault();
+        e.stopPropagation();
+    }, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+        if (!faderDragging) return;
+        const rect = meterWrap.getBoundingClientRect();
+        setFaderPos(1 - (e.touches[0].clientY - rect.top) / rect.height);
+    });
+    document.addEventListener('touchend', () => { faderDragging = false; });
 
     const volLabel = document.createElement('div');
     volLabel.className = 'video-vol-label';
@@ -2388,6 +2486,8 @@ function createVideoPad() {
         if (isDraggingLocked) return;
         const t = e.target.tagName.toLowerCase();
         if (['input','button','iframe','select','textarea'].includes(t)) return;
+        // On mobile the stage handles play — don't start a drag when touching it
+        if (e.target.closest('.video-stage')) return;
         pad.style.zIndex = ++_topZ;
         dragging = true;
         const r = pad.getBoundingClientRect();
