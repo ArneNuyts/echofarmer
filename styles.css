@@ -1292,6 +1292,17 @@ body.room-mode #gif-container {
         width: 30px;
         height: 30px;
     }
+    /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as
+       the actual font-size and scaling the element down to appear as the
+       original 8px design size (16px × 0.5 = 8px). The input shrinks visually
+       but the browser never triggers auto-zoom. */
+    .video-url {
+        font-size: 16px;
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 200%; /* compensate for the 0.5 scale so it still fills the grid cell */
+        height: 36px; /* 18px × 2 to compensate for scale */
+    }
 }
 
 /* ── Mobile video pad ───────────────────────────────────────────────────────── */

@@ -1474,38 +1474,58 @@ class GifSampler {
 
         const ctx = getAudioContext();
 
-        // ── Prefer AudioBufferSourceNode: zero startup latency, works with drive chain ──
-        // The buffer may have been decoded in the background while the page was loading.
-        const maybeBuf = audioSrc ? _bufferCache.get(audioSrc) : undefined;
-        // maybeBuf is an AudioBuffer if resolved, a Promise if still decoding, or undefined
-        if (ctx && maybeBuf instanceof AudioBuffer) {
-            const doPlayBuffer = () => {
-                const bufSrc = ctx.createBufferSource();
-                bufSrc.buffer = maybeBuf;
-                bufSrc.connect(getLimiter());
-                bufSrc.start(0);
-                bufSrc.onended = hideOnEnd;
-                gifData.activeBufferNode = bufSrc;
-            };
-            if (ctx.state !== 'running') {
-                ctx.resume().then(doPlayBuffer).catch(doPlayBuffer);
-            } else {
-                doPlayBuffer();
-            }
-            return;
-        }
+        // Helpers ─────────────────────────────────────────────────────────────
+        // Play an already-decoded AudioBuffer through the Web Audio graph.
+        // AudioBufferSourceNode supports true polyphony: each call creates a new
+        // independent node, so different GIFs can play simultaneously.
+        const doPlayBuffer = (buf) => {
+            if (!buf) { fallbackToElement(); return; }
+            const bufSrc = ctx.createBufferSource();
+            bufSrc.buffer = buf;
+            bufSrc.connect(getLimiter());
+            bufSrc.start(0);
+            bufSrc.onended = hideOnEnd;
+            gifData.activeBufferNode = bufSrc;
+        };
 
-        // ── Fallback: HTMLAudioElement (used on first tap before buffer is decoded,
-        //    or if decoding failed). Still routed through Web Audio graph. ──
-        gifData.activeAudio = audio;
-        audio.currentTime = 0;
-        const doPlay = () => { const p = audio.play(); if (p) p.catch(() => {}); };
-        if (ctx && ctx.state !== 'running') {
-            ctx.resume().then(doPlay).catch(doPlay);
+        // Resume the AudioContext (if needed) then call a callback.
+        // iOS allows play() / start() inside Promise .then() chains that
+        // originate from a user-gesture handler.
+        const withRunningCtx = (fn) => {
+            if (ctx && ctx.state !== 'running') {
+                ctx.resume().then(fn).catch(fn);
+            } else {
+                fn();
+            }
+        };
+
+        // HTMLAudioElement fallback — used only when the buffer isn't ready yet
+        // AND the buffer is not even decoding (null/undefined).
+        const fallbackToElement = () => {
+            gifData.activeAudio = audio;
+            audio.currentTime = 0;
+            withRunningCtx(() => { const p = audio.play(); if (p) p.catch(() => {}); });
+            audio.addEventListener('ended', hideOnEnd);
+        };
+
+        // Choose playback path ─────────────────────────────────────────────────
+        const maybeBuf = audioSrc ? _bufferCache.get(audioSrc) : undefined;
+
+        if (ctx && maybeBuf instanceof AudioBuffer) {
+            // Buffer ready → play instantly
+            withRunningCtx(() => doPlayBuffer(maybeBuf));
+        } else if (ctx && maybeBuf instanceof Promise) {
+            // Buffer still decoding → ensure context is running, then play as
+            // soon as decode finishes (very small delay on first tap only).
+            if (ctx.state !== 'running') ctx.resume().catch(() => {});
+            maybeBuf.then(buf => {
+                if (buf instanceof AudioBuffer) doPlayBuffer(buf);
+                else fallbackToElement();
+            }).catch(fallbackToElement);
         } else {
-            doPlay();
+            // No buffer or decode failed → HTMLAudioElement fallback
+            fallbackToElement();
         }
-        audio.addEventListener('ended', hideOnEnd);
     }
 }
 
@@ -2079,7 +2099,7 @@ function createVideoPad() {
             `<div class="ph-list">` +
             `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Hold the video area to play. Release to stop.</span>` +
-            `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag up\/down in the timecode box<span class="ph-mini-tc">0:42 \/ 3:15</span></span>` +
+            `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag the timeline left\u2009/\u2009right<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
             `</div>`;
     } else {
         stagePlaceholder.innerHTML =
