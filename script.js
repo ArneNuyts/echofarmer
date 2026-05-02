@@ -2180,7 +2180,7 @@ function createVideoPad() {
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
     let timeDragY = null;
     let timeDragStart = null;
-    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to set sample start. Hold shift while dragging for finer control. Or use arrow keys (with shift for fine).'));
+    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down (or use arrow keys) to set sample start. Hold shift for fine, cmd/ctrl+shift for ultra-fine control.'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
     timeLabel.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -2193,8 +2193,10 @@ function createVideoPad() {
     });
     document.addEventListener('mousemove', (e) => {
         if (timeDragY === null) return;
-        // Read shiftKey live so the user can press/release shift mid-drag.
-        const rate = e.shiftKey ? 0.1 : 1;
+        // Read modifiers live so the user can press/release them mid-drag.
+        // shift = 0.1s/px (fine), cmd/ctrl+shift = 0.01s/px (ultra-fine), default = 1s/px.
+        const ultra = e.shiftKey && (e.metaKey || e.ctrlKey);
+        const rate = ultra ? 0.01 : (e.shiftKey ? 0.1 : 1);
         const delta = (timeDragY - e.clientY) * rate;
         const target = timeDragStart + delta;
         markUserSeeking();
@@ -2292,7 +2294,9 @@ function createVideoPad() {
             const isVert  = e.key === 'ArrowUp'    || e.key === 'ArrowDown';
             if (isHoriz || isVert) {
                 const dir = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : -1;
-                const step = e.shiftKey ? 0.1 : 1; // seconds per press; matches drag scheme
+                // Same precision tiers as the drag: shift = 0.1s, cmd/ctrl+shift = 0.01s.
+                const ultra = e.shiftKey && (e.metaKey || e.ctrlKey);
+                const step = ultra ? 0.01 : (e.shiftKey ? 0.1 : 1);
                 markUserSeeking();
                 if (ytPlayer && ytReady) {
                     try {
