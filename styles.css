@@ -21,29 +21,107 @@ body.flat-mode {
     --table-extra: 600px;
 }
 
-#hover-info {
+#info-float {
     position: fixed;
-    top: 6px;
-    right: 30px;
-    width: 140px;
-    height: 18px;
-    background: #b3aba0;
-    border-radius: 0px;
+    max-width: 220px;
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    padding: 8px 12px;
     z-index: 110;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: inherit;
-    font-size: 9px;
-    font-weight: 700;
+    font-family: "Geist", sans-serif;
+    font-size: 13px;
+    font-weight: 450;
     color: #1b1916;
-    letter-spacing: normal;
+    line-height: 1.6;
     pointer-events: none;
-    opacity: 100;
-    transition: opacity 0.1s;
+    opacity: 0;
+    transition: opacity 0.15s;
 }
-#hover-info.visible {
+
+#info-float.visible {
     opacity: 1;
+}
+
+/* #info-toggle.info-off uses a dedicated icon (set by JS); no opacity tint. */
+
+#open-bottom-toggle.open-bottom-off {
+    opacity: 0.3;
+}
+
+#bottom-frame-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: #7c7164;
+    z-index: 200;
+    transform: translateY(100%);
+    pointer-events: none;
+}
+
+/* ── Open-bottom mode ── */
+body.open-bottom-mode #frame-wrapper {
+    padding-bottom: 0;
+}
+body.open-bottom-mode #frame-inner {
+    margin-bottom: 45px;
+    overflow: visible;
+    /* No bottom border — the dark frame border continues down through the floor's L/R borders */
+    border-bottom: none;
+    /* Square the bottom corners so the L/R borders meet the floor's top edge
+       in a straight line. The floor itself keeps the bottom-left radius at
+       its own bottom-left corner. */
+    border-radius: 5px 5px 0 0;
+    /* Allow the floor's L/R borders (at left:-2/right:-2) and bottom overflow to render */
+    clip-path: inset(0 -2px -100vh -2px round 5px 5px 0 0);
+}
+/* Guarantee the inner frame border stays on top of all transformed/composited
+   children (header-canvas, room-walls, etc.) by re-drawing it via an overlay
+   pseudo-element with a high z-index. Otherwise the top border can visually
+   disappear when children translate up during scroll. */
+body.open-bottom-mode #frame-inner::after {
+    content: '';
+    position: absolute;
+    /* Only redraw the TOP edge of the frame, on top of the real border, so
+       it stays visible above transformed children (header-canvas, etc.).
+       Drawing L/R/BL here too would double-up those edges and make them
+       look thicker than the floor's matching borders. */
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    height: 2px;
+    background: #595147;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    pointer-events: none;
+    z-index: 100;
+}
+body.open-bottom-mode .floor-section {
+    /* Extend 2px outward on each side so the floor's L/R borders sit on the same
+       pixels as the frame-inner's L/R borders (continuous dark frame line). */
+    left: -2px;
+    right: -2px;
+    /* Pull the floor up by 2px so its top border lands exactly on the bottom
+       edge of the frame-inner, covering the wall-back's last grid line (which
+       sits there at rest, doubling the stroke). */
+    margin-top: -2px;
+    border-width: 1.5px 2px 2px 2px;
+    border-radius: 0 0 0 5px;
+}
+body.open-bottom-mode #right-panel {
+    /* At rest: extends to the window bottom. JS animates this up to 32px
+       at full scroll so it sits on the dark inner frame line at the top of
+       the bottom frame bar. */
+    bottom: 0;
+}
+body.open-bottom-mode #custom-scrollbar {
+    bottom: 11px; /* 11px inset matches top gap; grows to 41px in JS as bottom bar slides in */
+}
+body.open-bottom-mode #bottom-frame-bar {
+    display: block;
 }
 
 #right-panel {
@@ -98,7 +176,8 @@ body.flat-mode {
 }
 
 #lock-button img,
-#add-video img {
+#add-video img,
+#info-toggle img {
     transform: scale(1.3);
 }
 
@@ -456,13 +535,27 @@ body.room-mode #gif-container {
 }
 
 .floor-heading {
-    font-size: 13px;
+    font-size: 19px;
     font-weight: 700;
     color: #4c453d;
     margin: 0;
     padding: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Unify all body text in the bottom section to the title color.
+   Exception: .btn-bandsintown keeps its original light text on dark
+   background; only its hover state recolours (defined further below). */
+.floor-section,
+.floor-section a:not(.btn-bandsintown),
+.bio,
+.release-title,
+.show-venue,
+.show-venue a,
+.show-location,
+.contact-link {
+    color: #4c453d;
 }
 
 /* Bio section */
@@ -541,8 +634,11 @@ body.room-mode #gif-container {
 }
 
 .btn-bandsintown {
-    display: inline-block;
-    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 12px;
     background: #4c453d;
     color: #bfb8af;
     text-decoration: none;
@@ -550,6 +646,7 @@ body.room-mode #gif-container {
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-bandsintown:hover {
@@ -569,6 +666,9 @@ body.room-mode #gif-container {
     padding: 0;
     background: transparent;
     z-index: 4;
+}
+.links-section-sep {
+    margin-top: 8px;
 }
 
 /* Custom scrollbar inside the right panel, centered in the 24px zone.
@@ -607,7 +707,7 @@ body.room-mode #gif-container {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     justify-content: flex-start;
 }
@@ -632,10 +732,10 @@ body.room-mode #gif-container {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
     flex-shrink: 0;
     background: transparent;
     border: none;
@@ -680,6 +780,34 @@ body.room-mode #gif-container {
     background: #595147;
     color: white;
     transform: scale(1.05);
+}
+
+.contact-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.contact-links li { margin: 0; }
+.contact-links strong,
+.contact-link-item strong {
+    font-weight: 700;
+    color: #4c453d;
+}
+.contact-link-item {
+    color: #4c453d;
+}
+.contact-link {
+    color: #1b1916;
+    text-decoration: none;
+    border-bottom: 1px dotted #595147;
+    transition: color 0.2s ease, border-bottom-color 0.2s ease;
+}
+.contact-link:hover {
+    color: #4c453d;
+    border-bottom-color: #4c453d;
 }
 
 /* Lock Button — icon-button in controls bar, no extra positioning */
@@ -774,9 +902,6 @@ body.room-mode #gif-container {
     display: none;
 }
 
-.video-body-row { display: none; }
-.video-main-col { display: none; }
-.video-stage-row { display: none; }
 
 .video-stage {
     position: relative;
@@ -784,6 +909,81 @@ body.room-mode #gif-container {
     background: #1a1a1a;
     border-radius: 3px;
     overflow: hidden;
+}
+
+.video-stage-placeholder {
+    position: absolute;
+    inset: 0;
+    /* Sit above the YT overlay (z:2) so the explainer stays visible while a
+       URL is loaded but not yet playing. Solid black background hides the
+       loaded video frame underneath until the user triggers playback. */
+    z-index: 3;
+    background: #000;
+    display: flex;
+    align-items: center;
+    padding: 12px 5px 12px 5px;
+    font-family: 'Geist', sans-serif;
+    font-size: 10px;
+    font-weight: 450;
+    color: #dfdcd8;
+    line-height: 1.7;
+    pointer-events: none;
+}
+.ph-list {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    column-gap: 5px;
+    row-gap: 1px;
+    align-items: start;
+    width: 100%;
+}
+.ph-num {
+    text-align: right;
+    line-height: 1.7;
+    flex-shrink: 0;
+}
+.ph-text {
+    line-height: 1.7;
+}
+.ph-sub {
+    padding-left: 8px;
+}
+.ph-mini-scrub {
+    display: block;
+    margin-top: 3px;
+    margin-left: 10px;
+    margin-bottom: 2px;
+    width: 44px;
+    height: 3px;
+    background: linear-gradient(to right, #bfb8af 28%, #4c453d 28%);
+    border-radius: 2px;
+    position: relative;
+}
+.ph-mini-dot {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    background: #dfdcd8;
+    border-radius: 50%;
+    top: 50%;
+    left: 28%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+}
+.ph-mini-tc {
+    display: block;
+    margin-top: 3px;
+    margin-left: 10px;
+    width: fit-content;
+    font-size: 7px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    color: #1b1916;
+    background: #b3aba0;
+    padding: 1px 4px;
+    border-radius: 1px;
+    cursor: ns-resize;
 }
 .video-el,
 .video-yt {
@@ -803,11 +1003,11 @@ body.room-mode #gif-container {
 }
 
 .video-el { pointer-events: none; }
-.video-yt iframe { width: 100%; height: 100%; border: 0; background: #000; }
+.video-yt iframe { width: 100%; height: 100%; border: 0; background: #000; pointer-events: none; }
 .video-el[hidden],
 .video-yt[hidden] { display: none; }
 
-.video-scrub-row { display: none; }
+
 .video-scrub {
     grid-column: 1;
     grid-row: 3;
@@ -866,17 +1066,6 @@ body.room-mode #gif-container {
     background: #dfdcd8;
 }
 
-.video-bottom {
-    display: none;
-}
-
-.video-vol-col {
-    display: none;
-}
-
-.video-vol-icon {
-    display: none;
-}
 
 .video-vol-label {
     grid-column: 2;
@@ -894,40 +1083,6 @@ body.room-mode #gif-container {
     width: 100%;
 }
 
-.video-vol {
-    grid-column: 2;
-    grid-row: 2 / 4;
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 6px;
-    height: 100%;
-    justify-self: center;
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-}
-.video-vol::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #dfdcd8;
-    border: 1px solid #1b1916;
-    cursor: pointer;
-}
-.video-vol::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #dfdcd8;
-    border: 1px solid #1b1916;
-    cursor: pointer;
-}
-
-.video-vol { display: none; }
-.video-vol::-webkit-slider-thumb { display: none; }
-.video-vol::-moz-range-thumb { display: none; }
 
 .video-meter-wrap {
     grid-column: 2;
@@ -1078,22 +1233,26 @@ body.room-mode #gif-container {
 }
 
 /* Mobile Responsiveness */
-/* Min column width = a bit larger than 5 social icons (24px) + 4 gaps (10px) = 160px.
-   Use 175px as min column width. Floor-section width ≈ viewport - 60px (frame padding)
-   minus 32px floor padding = viewport - 92px.
-   - 4 cols requires floor ≥ 4×175 + 3×20 = 760px → viewport ≥ 852px
-   - 2 cols requires floor ≥ 2×175 + 1×20 = 370px → viewport ≥ 462px
-   - 1 col below */
-@media (max-width: 850px) {
+/* The "get updated on new shows" button must never wrap.
+   Its intrinsic width (Geist 700, ~13px) is ~215px with padding.
+   Floor col width = (viewport - 124px - 3×30px gap) / 4.
+   For col ≥ 220px: viewport ≥ 1098px → switch at 1100px.
+   - 4 cols: viewport > 1100px
+   - 2 cols: viewport 460–1100px
+   - 1 col: viewport ≤ 460px */
+@media (max-width: 1100px) {
     .floor-section {
         grid-template-columns: repeat(2, 1fr);
+        /* Vertical spacing between stacked blocks = title font-size (19px). */
+        row-gap: 19px;
     }
 }
 
-@media (max-width: 460px) {
+@media (max-width: 540px) {
     .floor-section {
         grid-template-columns: 1fr;
-        gap: 12px;
+        column-gap: 12px;
+        row-gap: 19px;
         padding: 12px 8px;
     }
     

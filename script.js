@@ -54,33 +54,34 @@ const samplerConfig = [
         x: 70,                             // Initial X position (%)
         y: 60                              // Initial Y position (%)
     },
-    {
-        gif: 'gifs/blue_dolphin.gif',
-        staticImg: 'gifs/blue_dolphin.png',
-        audio: 'audio/dans1.wav',
-        width: 112,
-        height: 112,
-        x: 25,
-        y: 25
-    },
-    {
-        gif: 'gifs/blue_dolphin.gif',
-        staticImg: 'gifs/blue_dolphin.png',
-        audio: 'audio/dans2.wav',
-        width: 112,
-        height: 112,
-        x: 60,
-        y: 45
-    },
-    {
-        gif: 'gifs/blue_dolphin.gif',
-        staticImg: 'gifs/blue_dolphin.png',
-        audio: 'audio/dans3.wav',
-        width: 112,
-        height: 112,
-        x: 40,
-        y: 75
-    }
+    // hidden for now — restore when ready:
+    // {
+    //     gif: 'gifs/blue_dolphin.gif',
+    //     staticImg: 'gifs/blue_dolphin.png',
+    //     audio: 'audio/dans1.wav',
+    //     width: 112,
+    //     height: 112,
+    //     x: 25,
+    //     y: 25
+    // },
+    // {
+    //     gif: 'gifs/blue_dolphin.gif',
+    //     staticImg: 'gifs/blue_dolphin.png',
+    //     audio: 'audio/dans2.wav',
+    //     width: 112,
+    //     height: 112,
+    //     x: 60,
+    //     y: 45
+    // },
+    // {
+    //     gif: 'gifs/blue_dolphin.gif',
+    //     staticImg: 'gifs/blue_dolphin.png',
+    //     audio: 'audio/dans3.wav',
+    //     width: 112,
+    //     height: 112,
+    //     x: 40,
+    //     y: 75
+    // }
 ];
 
 // Detect if device is mobile
@@ -103,6 +104,23 @@ if (VIEW_MODE === 'flat') {
 
 // Lock state for dragging
 let isDraggingLocked = false;
+
+// Info-float toggle state (default on, persisted)
+let infoFloatEnabled = (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
+
+// Open-bottom mode: frame has no bottom edge; floor section revealed by scrolling
+let openBottomEnabled = (() => { try { return localStorage.getItem('openBottom') === 'true'; } catch(e) { return false; } })();
+
+// Handle for forcing a scroll-state refresh after mode toggles
+let _roomScrollUpdate = null;
+let _syncFloorHeight = null;
+let _scrollbarUpdate = null; // exposed by setupCustomScrollbar so room scroll can retrigger it
+
+// Mouse tracking for info-float positioning
+let _mouseX = 0, _mouseY = 0;
+// Suppress info-float repositioning while a knob/drag interaction is in progress
+// (so the tooltip stays where it was when the drag began).
+let _infoFloatFrozen = false;
 
 // Shared z-index counter for bring-to-front on GIFs and video pads
 let _topZ = 1;
@@ -194,7 +212,7 @@ function _ensureMasterChain() {
     _reverbSend = ctx.createGain();
     _reverbSend.gain.value = 1;
     _reverbConvolver = ctx.createConvolver();
-    _reverbConvolver.buffer = _makeRoomImpulse(ctx, 1.0, 4.0);
+    _reverbConvolver.buffer = _makeRoomImpulse(ctx, 0.4, 5.0);
     const reverbHPF = ctx.createBiquadFilter();
     reverbHPF.type = 'highpass';
     reverbHPF.frequency.value = 350;
@@ -230,21 +248,31 @@ function _makeRoomImpulse(ctx, duration, decay) {
 
 // Set reverb wet amount [0..1].
 let _lastIrStep = -1;
+let _lastWetAmount = 0;
 function setReverbAmount(amount) {
     _ensureMasterChain();
     if (!_reverbWet) return;
     const a = Math.max(0, Math.min(1, amount));
     const ctx = getAudioContext();
     const t = ctx ? ctx.currentTime : 0;
-    // Wet ramps up to ~1.0 (loud, lush) when room is fully open.
-    _reverbWet.gain.setTargetAtTime(a * 1.0, t, 0.05);
-    // Rebuild IR at 6 discrete steps so decay lengthens as the room opens.
-    // duration 1.0s→3.0s, decay-steepness 4.0→2.0 (lower = longer tail).
+    // Kill immediately when fully closed; fade out slowly mid-scroll so the
+    // tail isn't chopped; fade in fast when opening.
+    if (a === 0) {
+        _reverbWet.gain.cancelScheduledValues(t);
+        _reverbWet.gain.setValueAtTime(0, t);
+    } else {
+        const timeConst = a < _lastWetAmount ? 0.6 : 0.05;
+        _reverbWet.gain.setTargetAtTime(a * 1.6, t, timeConst);
+    }
+    _lastWetAmount = a;
+    // Only rebuild IR when room is opening (step increasing) — replacing the
+    // convolver buffer kills any in-progress reverb tail.
+    // duration 0.7s→2.0s, decay 4.5→2.5 (shorter overall).
     const step = Math.round(a * 5) / 5;
-    if (_reverbConvolver && Math.abs(step - _lastIrStep) >= 0.19) {
+    if (_reverbConvolver && step > _lastIrStep && Math.abs(step - _lastIrStep) >= 0.19) {
         _lastIrStep = step;
-        const duration = 1.0 + step * 2.0;
-        const decay    = 4.0 - step * 2.0;
+        const duration = 0.4 + step * 0.9;
+        const decay    = 5.0 - step * 1.5;
         _reverbConvolver.buffer = _makeRoomImpulse(ctx, duration, decay);
     }
 }
@@ -494,11 +522,12 @@ function syncWallCellVars() {
     frameInner.style.setProperty('--depth', depth + 'px');
     // --back-z and --back-line-w are driven by scroll position in room mode
     // (see setupRoomScrollOpen). Don't snap them here.
-    // Build the same 9x9 square-stamp tile the original table uses, sized to one cell.
+    // Build the same square-stamp tile the original table uses, sized to one cell.
     // Squares sit on the LEFT side of the cell, with equal padding to the
-    // top, bottom and left edges (matches the canvas drawGrid layout).
+    // top, bottom and left edges of the cell INTERIOR (i.e. inside the 1px grid lines).
+    const lineW = 1;
     const sq = 9;
-    const pad = (cellHeight - sq) / 2;
+    const pad = lineW + (cellHeight - lineW - sq) / 2;
     const sx = pad;
     const sy = pad;
     const svg =
@@ -507,9 +536,6 @@ function syncWallCellVars() {
         `<rect x='${sx}' y='${sy}' width='${sq}' height='${sq}' fill='%235d5343'/>` +
         `</pattern></defs><rect width='100%25' height='100%25' fill='url(%23p)'/></svg>`;
     frameInner.style.setProperty('--squares-bg', `url("data:image/svg+xml;utf8,${svg}")`);
-    // Size the hover-info bar to match two header cells
-    const hoverInfo = document.getElementById('hover-info');
-    if (hoverInfo) hoverInfo.style.width = (cellWidth * 3) + 'px';
 }
 
 // Two-phase scroll animation:
@@ -534,16 +560,25 @@ function setupRoomScrollOpen() {
     const headerCanvas = frameInner.querySelector('.header-canvas');
     // Publish floor-section height as a CSS var so #table-content min-height
     // reserves enough scroll room for phase 2.
+    // In open-bottom mode the floor lands 15px above frame-inner.bottom at end-of-scroll
+    // (so its bottom sits at the top of the bottom frame bar), so the scroll range
+    // it needs is _floorH - 15 instead of _floorH.
+    let _floorH = 0;
+    const PEEK = 15;
     const syncFloorHeight = () => {
-        const h = floorSection ? floorSection.offsetHeight : 0;
-        frameInner.style.setProperty('--floor-h', h + 'px');
+        _floorH = floorSection ? floorSection.offsetHeight : 0;
+        const isOpen = document.body.classList.contains('open-bottom-mode');
+        const effective = Math.max(0, _floorH - (isOpen ? PEEK : 0));
+        frameInner.style.setProperty('--floor-h', effective + 'px');
     };
     syncFloorHeight();
     window.addEventListener('resize', syncFloorHeight);
+    _syncFloorHeight = syncFloorHeight;
     // Start with the back wall pulled forward to z=0 (flat-table look).
     frameInner.style.setProperty('--back-z', '0px');
     frameInner.style.setProperty('--back-line-w', '1px');
     let raf = null;
+    const bottomFrameBar = document.getElementById('bottom-frame-bar');
     const update = () => {
         raf = null;
         const depth = _roomDepthTarget || 800;
@@ -556,14 +591,45 @@ function setupRoomScrollOpen() {
         const lineW = Math.max(1, Math.round(1 / scale));
         frameInner.style.setProperty('--back-line-w', lineW + 'px');
         setReverbAmount(t);
-        // Phase 2: slide the room + header + floor section up
+        // Phase 2: slide the room + header + floor section up (all together, floor stays attached).
+        // No constant offset — the open-bottom peek is achieved by margin-bottom on frame-inner,
+        // not by translating elements. This way the top row of cells is fully visible at refresh.
         const extra = Math.max(0, st - depth);
         const ty = `translateY(${-extra}px)`;
         if (roomWalls) roomWalls.style.transform = ty;
         if (headerCanvas) headerCanvas.style.transform = ty;
         if (floorSection) floorSection.style.transform = ty;
         if (gifContainer) gifContainer.style.transform = ty;
+        // Open-bottom mode: slide the bottom frame bar in during the last 30px of scroll,
+        // tracking floor.bottom so the dark line stays continuous with the floor's L/R borders.
+        // Also grow the scrollbar track bottom to keep the same 11px gap from the bar.
+        const scrollBarEl = document.getElementById('custom-scrollbar');
+        const rightPanelEl = document.getElementById('right-panel');
+        if (document.body.classList.contains('open-bottom-mode')) {
+            const totalExtra = Math.max(0, _floorH - PEEK);
+            const barEnter = Math.max(0, totalExtra - 30);
+            const barProgress = extra <= barEnter ? 0 : Math.min(1, (extra - barEnter) / 30);
+            if (bottomFrameBar) bottomFrameBar.style.transform = `translateY(${(1 - barProgress) * 30}px)`;
+            // Scrollbar bottom: 11px inset from the right-panel bottom (0px from window),
+            // growing by 30px as the bottom frame bar slides in so the thumb never overlaps it.
+            if (scrollBarEl) scrollBarEl.style.bottom = (11 + barProgress * 30) + 'px';
+            // Right-panel bottom: tracks the floor's visible bottom border so
+            // the panel ends right at the inner frame line as soon as it
+            // appears (not only during the final bar-slide).
+            // Floor bottom distance from window bottom = 45 + extra - _floorH.
+            // Add 2.5px to land just above the dark border line.
+            const panelTarget = 45 + extra - _floorH + 2.5;
+            if (rightPanelEl) rightPanelEl.style.bottom = Math.max(0, panelTarget) + 'px';
+            // Retrigger scrollbar thumb calc now so it uses the new track height
+            // (reading clientHeight after style change forces a synchronous reflow).
+            if (_scrollbarUpdate) _scrollbarUpdate();
+        } else {
+            if (bottomFrameBar) bottomFrameBar.style.transform = 'translateY(100%)';
+            if (scrollBarEl) scrollBarEl.style.bottom = '';
+            if (rightPanelEl) rightPanelEl.style.bottom = '';
+        }
     };
+    _roomScrollUpdate = update;
     const onScroll = () => { if (raf === null) raf = requestAnimationFrame(update); };
     scroller.addEventListener('scroll', onScroll, { passive: true });
     // The gif container is reparented out of #table-scroll, so a wheel event
@@ -593,6 +659,13 @@ window.addEventListener('resize', scheduleGridRedraw);
 
 // Initialize on load
 initializeGrid();
+// Initial measurements can be slightly off before fonts/layout settle
+// (manifests as misaligned cell lines that snap into place on resize).
+// Force a redraw after the window load event and after web fonts are ready.
+window.addEventListener('load', () => requestAnimationFrame(scheduleGridRedraw));
+if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleGridRedraw);
+}
 
 // Custom scrollbar living in the outer frame's right border, below the controls-bar
 function setupCustomScrollbar() {
@@ -633,6 +706,7 @@ function setupCustomScrollbar() {
     };
 
     scroller.addEventListener('scroll', update, { passive: true });
+    _scrollbarUpdate = update; // expose for room scroll to retrigger after track height changes
     window.addEventListener('resize', () => requestAnimationFrame(update));
     window.addEventListener('load', () => requestAnimationFrame(update));
 
@@ -691,6 +765,9 @@ function setupSvgHoverStates() {
         
         // Lock button excluded: its src changes on click, generic mouseleave would reset it
         if (hoverElement.id === 'lock-button') return;
+        // Info toggle excluded: src toggles between question.svg / question-disabled.svg
+        // based on infoFloatEnabled state — handled manually below.
+        if (hoverElement.id === 'info-toggle') return;
         // Drive knob excluded: hover state also active while dragging, handled in driveKnob block
         if (hoverElement.closest('#drive-knob')) return;
         
@@ -1032,7 +1109,7 @@ class GifSampler {
         gifDiv.appendChild(placeholder);
         gifDiv.appendChild(animatedImg);
         const gifIndex = index;
-        gifDiv.addEventListener('mouseenter', () => setHoverInfo(`Click me or press (${this.keyLabels[gifIndex]})`));
+        gifDiv.addEventListener('mouseenter', () => setHoverInfo(`Click me or press (${this.keyLabels[gifIndex]}). Drag me to move me to a new spot.`));
         gifDiv.addEventListener('mouseleave', () => setHoverInfo(''));
         this.container.appendChild(gifDiv);
 
@@ -1336,19 +1413,55 @@ class GifSampler {
 }
 
 // Initialize the sampler when DOM is ready
+function positionInfoFloat(el) {
+    const offset = 16;
+    const w = el.offsetWidth || 220;
+    const h = el.offsetHeight || 40;
+    let x = _mouseX + offset;
+    let y = _mouseY + offset;
+    if (x + w > window.innerWidth - 10) x = _mouseX - w - offset;
+    if (y + h > window.innerHeight - 10) y = _mouseY - h - offset;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+}
+
 function setHoverInfo(text) {
-    const el = document.getElementById('hover-info');
-    if (!el) return;
-    el.textContent = text || '';
-    el.classList.toggle('visible', !!text);
+    const floatEl = document.getElementById('info-float');
+    if (!floatEl) return;
+    if (!infoFloatEnabled) {
+        floatEl.classList.remove('visible');
+        return;
+    }
+    floatEl.textContent = text || '';
+    if (text && !_infoFloatFrozen) positionInfoFloat(floatEl);
+    floatEl.classList.toggle('visible', !!text);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     new GifSampler(samplerConfig);
     setupCustomScrollbar();
 
+    // Track mouse for info-float positioning
+    document.addEventListener('mousemove', (e) => {
+        _mouseX = e.clientX;
+        _mouseY = e.clientY;
+        const floatEl = document.getElementById('info-float');
+        if (floatEl && floatEl.classList.contains('visible') && !_infoFloatFrozen) positionInfoFloat(floatEl);
+    });
+
     // Setup SVG hover state swapping
     setupSvgHoverStates();
+
+    // Explicitly wire HOVER SVGs for social/music icon links
+    document.querySelectorAll('.icon-link img').forEach(img => {
+        const link = img.closest('.icon-link');
+        if (!link) return;
+        const normalSrc = img.getAttribute('src');
+        const hoverSrc = normalSrc.replace('SVG-STATES/NORMAL/', 'SVG-STATES/HOVER/');
+        const preload = new Image(); preload.src = hoverSrc;
+        link.addEventListener('mouseenter', () => { img.src = hoverSrc; });
+        link.addEventListener('mouseleave', () => { img.src = normalSrc; });
+    });
 
     // In room mode, scrolling drives the back-wall depth (room "opens" as you scroll).
     if (VIEW_MODE === 'room') {
@@ -1410,6 +1523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (lockImg) lockImg.src = 'icons/SVG-STATES/NORMAL/lock-open-yellow.svg';
             lockButton.classList.remove('locked');
         }
+        setHoverInfo(isDraggingLocked ? 'Unlock sample position' : 'Lock sample position');
     });
 
     // Setup drive knob (master output drive + soft-clip, 0..1)
@@ -1473,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             driveKnob.classList.toggle('active', amount > 0.001);
             setDriveAmount(amount);
             clipSector.setAttribute('d', makeSectorPath(amount));
-            if (!_applyInit) setHoverInfo('DRIVE ' + Math.round(amount * 100) + '%');
+            if (!_applyInit) setHoverInfo('Drive ' + Math.round(amount * 100) + '%');
         };
 
         let dragging = false;
@@ -1490,6 +1604,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dragging = true;
             startY = e.clientY;
             startAmount = amount;
+            _infoFloatFrozen = true;
             e.preventDefault();
         });
         const knobDialImg = dial.querySelector('img');
@@ -1509,25 +1624,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             dragging = false;
+            _infoFloatFrozen = false;
         });
 
         driveKnob.addEventListener('touchstart', (e) => {
             dragging = true;
             startY = e.touches[0].clientY;
             startAmount = amount;
+            _infoFloatFrozen = true;
             e.preventDefault();
         }, { passive: false });
         document.addEventListener('touchmove', (e) => {
             if (dragging) onMove(e.touches[0].clientY);
         }, { passive: false });
-        document.addEventListener('touchend', () => { if (dragging) setHoverInfo(''); dragging = false; });
+        document.addEventListener('touchend', () => { if (dragging) setHoverInfo(''); dragging = false; _infoFloatFrozen = false; });
 
         let _wheelTimeout = null;
         driveKnob.addEventListener('wheel', (e) => {
             e.preventDefault();
+            _infoFloatFrozen = true;
             applyAmount(amount - e.deltaY / 1000);
             clearTimeout(_wheelTimeout);
-            _wheelTimeout = setTimeout(() => setHoverInfo(''), 800);
+            _wheelTimeout = setTimeout(() => { setHoverInfo(''); _infoFloatFrozen = false; }, 800);
         }, { passive: false });
 
         driveKnob.addEventListener('dblclick', () => applyAmount(0));
@@ -1549,17 +1667,107 @@ document.addEventListener('DOMContentLoaded', () => {
     const addVideoBtn = document.getElementById('add-video');
     if (addVideoBtn) addVideoBtn.addEventListener('click', createVideoPad);
 
-    // Hover info bar — action buttons
-    [
-        { id: 'lock-button', label: 'Lock/unlock GIF position' },
-        { id: 'drive-knob',  label: 'Drive' },
-        { id: 'add-video',   label: 'Add video sampler' },
-    ].forEach(({ id, label }) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('mouseenter', () => setHoverInfo(label));
-        el.addEventListener('mouseleave', () => setHoverInfo(''));
-    });
+    // Wire up the info-float toggle button
+    const infoToggleBtn = document.getElementById('info-toggle');
+    if (infoToggleBtn) {
+        const infoImg = infoToggleBtn.querySelector('img');
+        const ICON_ON       = 'icons/SVG-STATES/NORMAL/question.svg';        // yellow
+        const ICON_ON_HOVER = 'icons/SVG-STATES/HOVER/question.svg';         // light
+        const ICON_OFF      = 'icons/SVG-STATES/NORMAL/question-disabled.svg'; // dark
+        // Idle icon for the current enabled state.
+        const idleIcon = (enabled) => enabled ? ICON_ON : ICON_OFF;
+        // Hover icon: yellow stays yellow (scale-only via .icon-button:hover);
+        // dark swaps to the light variant on hover.
+        const hoverIcon = (enabled) => enabled ? ICON_ON : ICON_ON_HOVER;
+        let pressing = false;
+        const refresh = () => {
+            if (!infoImg) return;
+            const hovering = infoToggleBtn.matches(':hover');
+            // While the mouse button is held, show the IDLE icon for the
+            // state we are about to toggle to (preview the next state).
+            const enabled = pressing ? !infoFloatEnabled : infoFloatEnabled;
+            infoImg.src = (pressing || !hovering) ? idleIcon(enabled) : hoverIcon(enabled);
+            infoToggleBtn.classList.toggle('info-off', !infoFloatEnabled);
+        };
+        refresh();
+        // Preload hover variant
+        const preload = new Image(); preload.src = ICON_ON_HOVER;
+        infoToggleBtn.addEventListener('mouseenter', refresh);
+        infoToggleBtn.addEventListener('mouseleave', () => { pressing = false; refresh(); });
+        infoToggleBtn.addEventListener('mousedown', () => { pressing = true; refresh(); });
+        // Mouseup fires before click; clear the press flag here so the click
+        // handler's refresh() picks up the new committed state.
+        const releasePress = () => { pressing = false; };
+        infoToggleBtn.addEventListener('mouseup', releasePress);
+        document.addEventListener('mouseup', releasePress);
+        infoToggleBtn.addEventListener('click', () => {
+            infoFloatEnabled = !infoFloatEnabled;
+            try { localStorage.setItem('infoFloat', infoFloatEnabled); } catch(e) {}
+            refresh();
+            if (!infoFloatEnabled) {
+                const floatEl = document.getElementById('info-float');
+                if (floatEl) floatEl.classList.remove('visible');
+            }
+            // Re-evaluate any open video-pad placeholders so they reflect
+            // the new info state immediately (instead of only on next stop).
+            document.querySelectorAll('.video-pad').forEach(p => {
+                if (typeof p._refreshPlaceholder === 'function') p._refreshPlaceholder();
+            });
+            setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info');
+        });
+    }
+
+    // Hover info bar — action buttons (state-aware for lock and info-toggle)
+    const lockBtnHover = document.getElementById('lock-button');
+    if (lockBtnHover) {
+        lockBtnHover.addEventListener('mouseenter', () => setHoverInfo(isDraggingLocked ? 'Unlock sample position' : 'Lock sample position'));
+        lockBtnHover.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+    const driveKnobHover = document.getElementById('drive-knob');
+    if (driveKnobHover) {
+        driveKnobHover.addEventListener('mouseenter', () => setHoverInfo('Turn to add drive'));
+        driveKnobHover.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+    const addVideoHover = document.getElementById('add-video');
+    if (addVideoHover) {
+        addVideoHover.addEventListener('mouseenter', () => setHoverInfo('Add video sampler'));
+        addVideoHover.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+    const infoToggleHover = document.getElementById('info-toggle');
+    if (infoToggleHover) {
+        infoToggleHover.addEventListener('mouseenter', () => setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info'));
+        infoToggleHover.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+
+    // Open-bottom mode toggle
+    const openBottomBtn = document.getElementById('open-bottom-toggle');
+    if (openBottomBtn) {
+        // Apply persisted state immediately (body is still invisible at this point)
+        document.body.classList.toggle('open-bottom-mode', openBottomEnabled);
+        openBottomBtn.classList.toggle('open-bottom-off', !openBottomEnabled);
+        openBottomBtn.addEventListener('click', () => {
+            openBottomEnabled = !openBottomEnabled;
+            try { localStorage.setItem('openBottom', openBottomEnabled); } catch(e) {}
+            document.body.classList.toggle('open-bottom-mode', openBottomEnabled);
+            openBottomBtn.classList.toggle('open-bottom-off', !openBottomEnabled);
+            if (!openBottomEnabled) {
+                const bar = document.getElementById('bottom-frame-bar');
+                if (bar) bar.style.transform = 'translateY(100%)';
+            }
+            if (_syncFloorHeight) _syncFloorHeight();
+            if (_roomScrollUpdate) _roomScrollUpdate();
+            setHoverInfo(openBottomEnabled ? 'Close bottom edge' : 'Open bottom edge');
+        });
+        openBottomBtn.addEventListener('mouseenter', () => setHoverInfo(openBottomEnabled ? 'Close bottom edge' : 'Open bottom edge'));
+        openBottomBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+
+    // Scrollbar hover info
+    const scrollThumb = document.getElementById('custom-scrollbar-thumb');
+    if (scrollThumb) {
+        scrollThumb.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere to make more space'));
+        scrollThumb.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
 });
 
 // Fetch Bandsintown shows and display them
@@ -1652,6 +1860,8 @@ window.onYouTubeIframeAPIReady = () => {
 function createVideoPad() {
     let keyBinding = null;
     let isPlaying = false;
+    let hasPlayed = false; // becomes true after the first play; controls whether
+                           // the explainer reappears on pause/stop when info is off.
     let ytPlayer = null;
     let ytReady = false;
     let ytPollInterval = null;
@@ -1681,8 +1891,11 @@ function createVideoPad() {
     closeImg.alt = 'Close';
     closeImg.style.cssText = 'width:19.5px;height:19.5px;display:block;transform:rotate(45deg);pointer-events:none;';
     closeBtn.appendChild(closeImg);
-    closeBtn.addEventListener('mouseenter', () => { closeImg.src = 'icons/SVG-STATES/HOVER/plus.svg'; });
-    closeBtn.addEventListener('mouseleave', () => { closeImg.src = 'icons/SVG-STATES/NORMAL/plus.svg'; });
+    closeBtn.addEventListener('mouseenter', () => { closeImg.src = 'icons/SVG-STATES/HOVER/plus.svg'; setHoverInfo('Close video sampler.'); });
+    closeBtn.addEventListener('mouseleave', () => { closeImg.src = 'icons/SVG-STATES/NORMAL/plus.svg'; setHoverInfo(''); });
+
+    pad.addEventListener('mouseenter', () => setHoverInfo('Video sampler'));
+    pad.addEventListener('mouseleave', () => setHoverInfo(''));
 
     const stage = document.createElement('div');
     stage.className = 'video-stage';
@@ -1710,7 +1923,7 @@ function createVideoPad() {
     const ytOverlay = document.createElement('div');
     ytOverlay.className = 'video-yt-overlay';
 
-    // Control row: PLAY | KEY MAP | timecode
+    // Control row: PLAY | MAP KEY | timecode
     const scrub = document.createElement('input');
     scrub.className = 'video-scrub';
     scrub.type = 'range'; scrub.min = 0; scrub.max = 1; scrub.step = 0.001; scrub.value = 0;
@@ -1729,7 +1942,7 @@ function createVideoPad() {
     triggerBtn.textContent = '▶  PLAY';
     const keyBtn = document.createElement('button');
     keyBtn.className = 'video-key';
-    keyBtn.textContent = 'KEY MAP';
+    keyBtn.textContent = 'MAP KEY';
     padRow.appendChild(triggerBtn);
     padRow.appendChild(keyBtn);
     padRow.appendChild(timeLabel);
@@ -1737,6 +1950,19 @@ function createVideoPad() {
     stage.appendChild(videoEl);
     stage.appendChild(ytWrapper);
     stage.appendChild(ytOverlay);
+
+    // Placeholder shown before any URL is loaded
+    const stagePlaceholder = document.createElement('div');
+    stagePlaceholder.className = 'video-stage-placeholder';
+    stagePlaceholder.innerHTML =
+        `<div class="ph-list">` +
+        `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
+        `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. That key can now launch the video.</span>` +
+        `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point either...</span>` +
+        `<span class="ph-num"></span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
+        `<span class="ph-num"></span><span class="ph-text ph-sub">...or drag up or down in the timecode box<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
+        `</div>`;
+    stage.appendChild(stagePlaceholder);
 
     // Stereo meter + fader knob
     let volValue = 0.8;
@@ -1770,6 +1996,9 @@ function createVideoPad() {
         if (ytPlayer && ytReady) { try { ytPlayer.setVolume(volValue * 100); } catch(_) {} }
     }
     setFaderPos(0.8);
+
+    meterWrap.addEventListener('mouseenter', () => setHoverInfo('Video volume'));
+    meterWrap.addEventListener('mouseleave', () => setHoverInfo(''));
 
     let faderDragging = false;
     faderKnob.addEventListener('mousedown', (e) => { faderDragging = true; e.preventDefault(); e.stopPropagation(); });
@@ -1837,12 +2066,34 @@ function createVideoPad() {
         ytReady = false;
         ytWrapper.innerHTML = ''; ytWrapper.hidden = true;
         isPlaying = false;
+        hasPlayed = false;
         triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
         scrub.value = 0; timeLabel.textContent = '0:00 / 0:00'; updateScrubTrack();
+        // Reset url-input loaded indicator and re-show the explainer.
+        urlInput.style.background = '';
+        stagePlaceholder.style.display = 'flex';
     }
+
+    // Signal a successfully loaded video by tinting the URL input.
+    const URL_LOADED_BG = '#90f1df';
+    function markUrlLoaded() { urlInput.style.background = URL_LOADED_BG; }
+    // Show the placeholder unless info is off and the video has already been
+    // played at least once (in that case the user has seen the instructions).
+    function showPlaceholder() {
+        if (isPlaying) return; // never override during playback
+        if (!infoFloatEnabled && hasPlayed) {
+            stagePlaceholder.style.display = 'none';
+        } else {
+            stagePlaceholder.style.display = 'flex';
+        }
+    }
+    // Expose so the info-toggle handler can re-show the placeholder when
+    // info is turned back on while the video is paused.
+    pad._refreshPlaceholder = showPlaceholder;
 
     function loadUrl(raw) {
         const url = raw.trim(); if (!url) return;
+        // Keep the explainer visible — it's only hidden once playback starts.
         resetPlayer();
         if (isYT(url)) {
             const id = getYTId(url); if (!id) return;
@@ -1863,12 +2114,15 @@ function createVideoPad() {
                             ytReady = true;
                             ytPlayer.setVolume(volValue * 100);
                             startYTPoll();
+                            markUrlLoaded();
                         },
                         onStateChange(e) {
                             if (e.data === YT.PlayerState.PLAYING) {
-                                isPlaying = true; triggerBtn.textContent = '■  STOP'; triggerBtn.classList.add('active');
+                                isPlaying = true; hasPlayed = true; triggerBtn.textContent = '■  STOP'; triggerBtn.classList.add('active');
+                                stagePlaceholder.style.display = 'none';
                             } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
                                 isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+                                showPlaceholder();
                             }
                         }
                     }
@@ -1898,8 +2152,10 @@ function createVideoPad() {
             videoEl.play();
             isPlaying = true; triggerBtn.classList.add('active');
         }
+        hasPlayed = true;
         triggerBtn.textContent = '■  STOP';
         triggerBtn.classList.add('active');
+        stagePlaceholder.style.display = 'none';
     }
 
     function stopPlay() {
@@ -1918,6 +2174,7 @@ function createVideoPad() {
         isPlaying = false;
         triggerBtn.textContent = '▶  PLAY';
         triggerBtn.classList.remove('active');
+        showPlaceholder();
     }
 
     // ── HTML5 video events ──
@@ -1930,7 +2187,9 @@ function createVideoPad() {
     });
     videoEl.addEventListener('ended', () => {
         isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+        showPlaceholder();
     });
+    videoEl.addEventListener('loadedmetadata', () => { markUrlLoaded(); });
     scrub.addEventListener('input', () => {
         updateScrubTrack();
         if (ytPlayer && ytReady) {
@@ -1942,11 +2201,13 @@ function createVideoPad() {
             videoEl.currentTime = scrub.value * videoEl.duration;
         }
     });
+    scrub.addEventListener('mouseenter', () => setHoverInfo('Drag playhead left or right to set sample start'));
+    scrub.addEventListener('mouseleave', () => setHoverInfo(''));
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
     let timeDragY = null;
     let timeDragStart = null;
     let timeDragShift = false;
-    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up/down to set sample start'));
+    timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to set sample start. Hold shift while dragging for finer control.'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
     timeLabel.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -2015,14 +2276,18 @@ function createVideoPad() {
         e.stopPropagation();
         if (e.key === 'Enter') { loadUrl(urlInput.value); urlInput.blur(); }
     });
-    urlInput.addEventListener('paste', () => setTimeout(() => loadUrl(urlInput.value), 0));
+    urlInput.addEventListener('paste', () => setTimeout(() => { loadUrl(urlInput.value); urlInput.blur(); }, 0));
+    urlInput.addEventListener('input', () => { if (!urlInput.value.trim()) urlInput.style.background = ''; });
+    urlInput.addEventListener('mouseenter', () => setHoverInfo('Paste video URL here.'));
+    urlInput.addEventListener('mouseleave', () => setHoverInfo(''));
 
     // ── Trigger (hold to play) ──
     triggerBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startPlay(); });
-    triggerBtn.addEventListener('mouseleave', stopPlay);
+    triggerBtn.addEventListener('mouseleave', (e) => { stopPlay(); setHoverInfo(''); });
     triggerBtn.addEventListener('mouseup', stopPlay);
     triggerBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPlay(); }, { passive: false });
     triggerBtn.addEventListener('touchend', stopPlay);
+    triggerBtn.addEventListener('mouseenter', () => setHoverInfo('Hold to play. Or map a key with the "MAP KEY" button for easier triggering.'));
 
     // ── Key binding ──
     let listening = false;
@@ -2032,7 +2297,7 @@ function createVideoPad() {
             if (e.key === 'Escape' || e.key === 'Backspace') {
                 listening = false; keyBinding = null;
                 keyBtn.classList.remove('binding', 'mapped');
-                keyBtn.textContent = 'KEY MAP';
+                keyBtn.textContent = 'MAP KEY';
             } else {
                 // Store the raw key exactly as fired so comparison always matches
                 keyBinding = e.key;
@@ -2056,7 +2321,7 @@ function createVideoPad() {
     };
     document.addEventListener('keydown', keydownHandler);
     document.addEventListener('keyup', keyupHandler);
-    keyBtn.addEventListener('mouseenter', () => setHoverInfo('Click and press a key'));
+    keyBtn.addEventListener('mouseenter', () => setHoverInfo('Click this button and press a key to map it as a trigger. Press the button again to unmap or remap. Hold the key to play the video. Escape or Backspace to delete the key link.'));
     keyBtn.addEventListener('mouseleave', () => setHoverInfo(''));
     keyBtn.addEventListener('click', () => {
         if (listening) {
@@ -2067,7 +2332,7 @@ function createVideoPad() {
                 keyBtn.classList.add('mapped');
                 keyBtn.textContent = keyBinding.length === 1 ? keyBinding.toUpperCase() : keyBinding;
             } else {
-                keyBtn.textContent = 'KEY MAP';
+                keyBtn.textContent = 'MAP KEY';
             }
         } else {
             listening = true; keyBtn.classList.add('binding'); keyBtn.classList.remove('mapped');
@@ -2085,6 +2350,7 @@ function createVideoPad() {
     });
 
     // ── Drag (mouse) ──
+    let _fr = { left: 0, top: 0 };
     pad.addEventListener('mousedown', (e) => {
         if (isDraggingLocked) return;
         const t = e.target.tagName.toLowerCase();
@@ -2092,15 +2358,17 @@ function createVideoPad() {
         pad.style.zIndex = ++_topZ;
         dragging = true;
         const r = pad.getBoundingClientRect();
+        _fr = _padContainer.getBoundingClientRect();
         dragOffX = e.clientX - r.left; dragOffY = e.clientY - r.top;
         e.preventDefault();
     });
-    const onMouseMove = (e) => { if (!dragging) return; const _fr = (_padContainer).getBoundingClientRect(); pad.style.left = (e.clientX - _fr.left - dragOffX) + 'px'; pad.style.top = (e.clientY - _fr.top - dragOffY) + 'px'; };
+    const onMouseMove = (e) => { if (!dragging) return; pad.style.left = (e.clientX - _fr.left - dragOffX) + 'px'; pad.style.top = (e.clientY - _fr.top - dragOffY) + 'px'; };
     const onMouseUp = () => { dragging = false; };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 
     // ── Drag (touch) ──
+    let _frT = { left: 0, top: 0 };
     pad.addEventListener('touchstart', (e) => {
         if (isDraggingLocked) return;
         const t = e.target.tagName.toLowerCase();
@@ -2108,9 +2376,10 @@ function createVideoPad() {
         pad.style.zIndex = ++_topZ;
         dragging = true;
         const r = pad.getBoundingClientRect();
+        _frT = _padContainer.getBoundingClientRect();
         dragOffX = e.touches[0].clientX - r.left; dragOffY = e.touches[0].clientY - r.top;
     }, { passive: true });
-    const onTouchMovePad = (e) => { if (!dragging) return; const _fr = (_padContainer).getBoundingClientRect(); pad.style.left = (e.touches[0].clientX - _fr.left - dragOffX) + 'px'; pad.style.top = (e.touches[0].clientY - _fr.top - dragOffY) + 'px'; };
+    const onTouchMovePad = (e) => { if (!dragging) return; pad.style.left = (e.touches[0].clientX - _frT.left - dragOffX) + 'px'; pad.style.top = (e.touches[0].clientY - _frT.top - dragOffY) + 'px'; };
     const onTouchEndPad = () => { dragging = false; };
     document.addEventListener('touchmove', onTouchMovePad, { passive: true });
     document.addEventListener('touchend', onTouchEndPad);

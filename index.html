@@ -11,7 +11,7 @@
     <style>body { opacity: 0; }</style>
 </head>
 <body class="room-mode">
-    <div id="hover-info"></div>
+    <div id="info-float"></div>
     <div id="right-panel"></div>
     <div id="controls-bar" class="controls-bar">
         <button id="lock-button" class="icon-button lock-button" title="Toggle lock" aria-label="Lock"><img src="icons/SVG-STATES/NORMAL/lock-open-yellow.svg" alt="Lock"></button>
@@ -20,7 +20,10 @@
             <div class="knob-dial"><img src="icons/SVG-STATES/NORMAL/knob-plus.svg" alt="Drive"></div>
         </div>
         <button id="add-video" class="icon-button add-video" title="Add video sampler" aria-label="Add video"><img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Add"></button>
+        <button id="info-toggle" class="icon-button" title="Toggle info window" aria-label="Toggle info"><img src="icons/SVG-STATES/NORMAL/question.svg" alt="Info"></button>
+        <button id="open-bottom-toggle" class="icon-button open-bottom-off" title="Toggle open bottom" aria-label="Toggle open bottom"><img src="icons/SVG-STATES/NORMAL/open-bottom.svg" alt="Open bottom"></button>
     </div>
+    <div id="bottom-frame-bar"></div>
     <div id="frame-wrapper">
         <div id="frame-inner">
             <canvas id="header-canvas" class="header-canvas"></canvas>
@@ -47,16 +50,19 @@
                 </div>
 
                 <div class="floor-part floor-releases">
-                    <h3 class="floor-heading">Upcoming Releases</h3>
+                    <h3 class="floor-heading">Tiny Big Much</h3>
                     <div class="releases-list">
                         <div class="release-item">
-                            <span class="release-date">May 15th</span>
+                            <span class="release-date">May 15th 2026</span>
                             <span class="release-title">Something So Suite: a single in three parts</span>
                         </div>
                         <div class="release-item">
                             <span class="release-date">Autumn 2026</span>
-                            <span class="release-title">Mixtape release</span>
+                            <span class="release-title">Full mixtape drops</span>
                         </div>
+
+            
+                        
                     </div>
                 </div>
 
@@ -69,7 +75,9 @@
                 <div class="floor-part floor-links">
                     <h3 class="floor-heading">Links</h3>
                     <div class="links-section">
-                        <div class="social-group">
+                        <div class="contact-link-item links-section-sep"><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">This Here Now (Junior)</a></div>
+                        <div class="contact-link-item links-section-sep"><strong>Booking BE &amp; NL:</strong> <a href="mailto:ilja@greenhousetalent.be" class="contact-link">Greenhouse Talent (Ilja)</a></div>
+                        <div class="social-group links-section-sep">
                             <a class="icon-link" href="https://instagram.com/echofarmer" target="_blank" aria-label="Instagram"><img src="icons/SVG-STATES/NORMAL/instagram.svg" alt="Instagram"></a>
                             <a class="icon-link" href="https://facebook.com/echofarmer" target="_blank" aria-label="Facebook"><img src="icons/SVG-STATES/NORMAL/facebook.svg" alt="Facebook"></a>
                             <a class="icon-link" href="https://youtube.com/@echofarmer" target="_blank" aria-label="YouTube"><img src="icons/SVG-STATES/NORMAL/youtube.svg" alt="YouTube"></a>
@@ -83,6 +91,7 @@
                             <a class="icon-link" href="https://tidal.com/artist/43987921" target="_blank" aria-label="Tidal"><img src="icons/SVG-STATES/NORMAL/tidal.svg" alt="Tidal"></a>
                             <a class="icon-link" href="https://soundcloud.com/echofarmer" target="_blank" aria-label="SoundCloud"><img src="icons/SVG-STATES/NORMAL/soundcloud.svg" alt="SoundCloud"></a>
                         </div>
+                        <a href="#" class="contact-link mailing-list-link links-section-sep">Subscribe to my mailing list</a>
                     </div>
                 </div>
             </div>
