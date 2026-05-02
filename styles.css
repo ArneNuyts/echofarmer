@@ -1196,7 +1196,6 @@ body.room-mode #gif-container {
 @media (max-width: 1100px) {
     .floor-section {
         grid-template-columns: repeat(2, 1fr);
-        /* Vertical spacing between stacked blocks = title font-size (19px). */
         row-gap: 19px;
     }
 }
@@ -1205,10 +1204,16 @@ body.room-mode #gif-container {
     .floor-section {
         grid-template-columns: 1fr;
         column-gap: 12px;
-        row-gap: 19px;
+        row-gap: 32px;
         padding: 12px 8px;
     }
-    
+}
+
+/* Touch devices: disable hover effects that only make sense with a cursor */
+@media (hover: none) {
+    .icon-button:hover {
+        transform: none;
+    }
 }
 
 /* Preload images - prevents flickering */
