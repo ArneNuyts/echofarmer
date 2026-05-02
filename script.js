@@ -109,6 +109,7 @@ let isDraggingLocked = false;
 let infoFloatEnabled = (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
 
 let _scrollbarUpdate = null; // exposed by setupCustomScrollbar so room scroll can retrigger it
+let _syncFloorHeight = null; // exposed by room init so fonts.ready can re-measure
 
 // Mouse tracking for info-float positioning
 let _mouseX = 0, _mouseY = 0;
@@ -564,6 +565,7 @@ function setupRoomScrollOpen() {
         frameInner.style.setProperty('--floor-h', effective + 'px');
     };
     syncFloorHeight();
+    _syncFloorHeight = syncFloorHeight; // expose for post-font re-measure
     window.addEventListener('resize', syncFloorHeight);
     // Start with the back wall pulled forward to z=0 (flat-table look).
     frameInner.style.setProperty('--back-z', '0px');
@@ -644,7 +646,13 @@ initializeGrid();
 // Force a redraw after the window load event and after web fonts are ready.
 window.addEventListener('load', () => requestAnimationFrame(scheduleGridRedraw));
 if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleGridRedraw);
+    document.fonts.ready.then(() => {
+        scheduleGridRedraw();
+        // Re-measure floor height and scrollbar after fonts have loaded,
+        // since text reflow can change the floor section's height.
+        if (_syncFloorHeight) _syncFloorHeight();
+        if (_scrollbarUpdate) _scrollbarUpdate();
+    });
 }
 
 // Custom scrollbar living in the outer frame's right border, below the controls-bar
