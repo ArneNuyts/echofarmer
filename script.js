@@ -1733,8 +1733,8 @@ async function fetchBandsintown() {
     if (!showsContainer) return;
 
     try {
-        // Fetch from our local proxy endpoint to bypass CORS
-        const response = await fetch('/api/bandsintown');
+        // Call Bandsintown API directly (supports CORS)
+        const response = await fetch('https://rest.bandsintown.com/artists/echofarmer/events?app_id=js_https%3A%2F%2Fwww.bandsintown.com');
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
