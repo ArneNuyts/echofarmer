@@ -250,6 +250,10 @@ function setReverbAmount(amount) {
     if (!_reverbWet) return;
     const a = Math.max(0, Math.min(1, amount));
     const ctx = getAudioContext();
+    // Ensure the context is running so reverb audio can flow — on iOS it starts
+    // suspended and only gets resumed on a user gesture. Calling resume() here
+    // covers the case where the user scrolls the room open before tapping a GIF.
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
     const t = ctx ? ctx.currentTime : 0;
     // Kill immediately when fully closed; fade out slowly mid-scroll so the
     // tail isn't chopped; fade in fast when opening.
@@ -1218,6 +1222,10 @@ class GifSampler {
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
         if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height) return false;
+
+        // On mobile, skip pixel-perfect alpha detection. GIFs are small and finger
+        // contact areas are large — alpha rejection causes too many misses.
+        if (isMobile) return true;
 
         if (gifData.alphaMask) {
             const imgW = gifData.alphaWidth;
