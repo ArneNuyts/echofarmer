@@ -1260,7 +1260,7 @@ body.room-mode #gif-container {
 /* strip at the top of the frame. Icons scale up to match .icon-link (30px).   */
 @media (max-width: 768px) {
     #frame-wrapper {
-        padding-top: 32px; /* controls bar height on mobile */
+        padding-top: 28px; /* controls bar height on mobile */
     }
     #controls-bar {
         top: 0;
@@ -1268,7 +1268,7 @@ body.room-mode #gif-container {
         right: 0;
         bottom: auto;
         width: auto;
-        height: 32px;
+        height: 28px;
         flex-direction: row;
         justify-content: flex-end;
         align-items: center;

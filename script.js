@@ -706,7 +706,13 @@ initializeGrid();
 // Initial measurements can be slightly off before fonts/layout settle
 // (manifests as misaligned cell lines that snap into place on resize).
 // Force a redraw after the window load event and after web fonts are ready.
-window.addEventListener('load', () => requestAnimationFrame(scheduleGridRedraw));
+window.addEventListener('load', () => {
+    requestAnimationFrame(scheduleGridRedraw);
+    // Re-measure floor height after full page load (images/fonts may have
+    // shifted layout after the initial syncFloorHeight call).
+    if (_syncFloorHeight) _syncFloorHeight();
+    if (_scrollbarUpdate) _scrollbarUpdate();
+});
 if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
         scheduleGridRedraw();
@@ -730,8 +736,13 @@ function setupCustomScrollbar() {
         const rightPanel = document.getElementById('right-panel');
         if (controlsBar) {
             const bottom = controlsBar.getBoundingClientRect().bottom;
-            if (rightPanel) rightPanel.style.top = (bottom + 4) + 'px';
-            bar.style.top = (bottom + 15) + 'px';  // 4px gap to panel + 11px inset
+            // On desktop the controls bar is on the right side; a 4px gap between
+            // it and the right-panel rail looks intentional. On mobile the bar is
+            // horizontal at the top, so the right-panel should start flush with the
+            // inner frame edge (controls-bar.bottom = frame inner top on mobile).
+            const panelGap = isMobile ? 0 : 4;
+            if (rightPanel) rightPanel.style.top = (bottom + panelGap) + 'px';
+            bar.style.top = (bottom + panelGap + 11) + 'px';  // 11px inset inside panel
         }
     };
     positionBar();
@@ -1938,6 +1949,8 @@ async function fetchBandsintown() {
 
         if (upcomingEvents.length === 0) {
             showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">No upcoming shows currently scheduled</p></div>';
+            if (_syncFloorHeight) _syncFloorHeight();
+            if (_scrollbarUpdate) _scrollbarUpdate();
             return;
         }
 
@@ -1945,6 +1958,8 @@ async function fetchBandsintown() {
     } catch (error) {
         console.error('Bandsintown fetch error:', error);
         showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">Unable to load shows — <a href="https://www.bandsintown.com/a/15583965-echofarmer" target="_blank" style="color: #5d5343; text-decoration: underline;">view on Bandsintown</a></p></div>';
+        if (_syncFloorHeight) _syncFloorHeight();
+        if (_scrollbarUpdate) _scrollbarUpdate();
     }
 }
 
@@ -1976,6 +1991,10 @@ function displayShows(events, container) {
         `;
         container.appendChild(showEl);
     });
+    // Re-measure floor height: shows content is loaded async after the initial
+    // syncFloorHeight() call, so the scroll range must be updated now.
+    if (_syncFloorHeight) _syncFloorHeight();
+    if (_scrollbarUpdate) _scrollbarUpdate();
 }
 
 // ─── Video Sampler Pad ───────────────────────────────────────────────────────
