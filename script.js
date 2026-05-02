@@ -2007,6 +2007,8 @@ function createVideoPad() {
             // Only sync scrub from the player while playing — otherwise the poll
             // would fight a user drag on the scrub bar by overwriting its value.
             if (!isPlaying) return;
+            // Don't fight the user while they are actively scrubbing.
+            if (userSeeking) return;
             try {
                 const dur = ytPlayer.getDuration();
                 const cur = ytPlayer.getCurrentTime();
@@ -2098,6 +2100,16 @@ function createVideoPad() {
     }
 
     let startScrubPos = 0;
+    // True while the user is actively seeking (dragging the scrub bar, dragging
+    // the timecode label, or pressing arrow keys). Suppresses the YT poll so
+    // it doesn't overwrite the user's intended position mid-action.
+    let userSeeking = false;
+    let _seekClearTimer = null;
+    function markUserSeeking(ms = 400) {
+        userSeeking = true;
+        clearTimeout(_seekClearTimer);
+        _seekClearTimer = setTimeout(() => { userSeeking = false; }, ms);
+    }
 
     function startPlay() {
         startScrubPos = parseFloat(scrub.value);
@@ -2139,6 +2151,7 @@ function createVideoPad() {
 
     // ── HTML5 video events ──
     videoEl.addEventListener('timeupdate', () => {
+        if (userSeeking) return;
         if (videoEl.duration) {
             scrub.value = videoEl.currentTime / videoEl.duration;
             updateScrubTrack();
@@ -2152,6 +2165,7 @@ function createVideoPad() {
     videoEl.addEventListener('loadedmetadata', () => { markUrlLoaded(); });
     scrub.addEventListener('input', () => {
         updateScrubTrack();
+        markUserSeeking();
         if (ytPlayer && ytReady) {
             try {
                 const dur = ytPlayer.getDuration();
@@ -2183,6 +2197,7 @@ function createVideoPad() {
         const rate = e.shiftKey ? 0.1 : 1;
         const delta = (timeDragY - e.clientY) * rate;
         const target = timeDragStart + delta;
+        markUserSeeking();
         if (ytPlayer && ytReady) {
             try {
                 const dur = ytPlayer.getDuration();
@@ -2278,6 +2293,7 @@ function createVideoPad() {
             if (isHoriz || isVert) {
                 const dir = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : -1;
                 const step = e.shiftKey ? 0.1 : 1; // seconds per press; matches drag scheme
+                markUserSeeking();
                 if (ytPlayer && ytReady) {
                     try {
                         const dur = ytPlayer.getDuration();
