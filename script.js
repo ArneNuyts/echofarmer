@@ -2135,7 +2135,8 @@ function createVideoPad() {
             `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Hold the video area to play. Release to stop.</span>` +
             `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag the timeline left\u2009/\u2009right<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
-            `</div>`;
+            `</div>` +
+            `<div class="ph-note">iOS limits video playback to one sound at a time, and disables the volume fader.</div>`;
     } else {
         stagePlaceholder.innerHTML =
             `<div class="ph-list">` +

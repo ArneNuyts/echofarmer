@@ -872,7 +872,10 @@ body.room-mode #gif-container {
     z-index: 3;
     background: #000;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
     padding: 12px 5px 12px 5px;
     font-family: 'Geist', sans-serif;
     font-size: 10px;
@@ -880,6 +883,15 @@ body.room-mode #gif-container {
     color: #dfdcd8;
     line-height: 1.7;
     pointer-events: none;
+}
+/* Footnote inside the mobile placeholder explaining iOS audio limitations. */
+.ph-note {
+    font-size: 9px;
+    font-weight: 450;
+    line-height: 1.4;
+    color: #9b9183;
+    font-style: italic;
+    padding: 0 5px;
 }
 .ph-list {
     display: grid;
