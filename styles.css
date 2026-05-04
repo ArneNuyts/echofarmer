@@ -1340,7 +1340,10 @@ body.room-mode #gif-container {
     color: #1b1916;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
     opacity: 0;
-    transition: opacity 0.2s ease, transform 0.3s ease;
+    /* No fade-in — appear instantly. Only the hover scale animates,
+       limited to the transform property so opacity/positioning changes
+       don't tween. */
+    transition: transform 0.2s ease;
     cursor: move;
     user-select: none;
 }

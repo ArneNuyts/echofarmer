@@ -1358,10 +1358,8 @@ class GifSampler {
             alphaWidth: 0,
             alphaHeight: 0,
             hideOnAudioEnd: null, // Stores the ended listener function for cleanup
-            // Pre-warmed pool of decoded <img> elements ready to be inserted
-            // synchronously on the next activation. Refilled in the background
-            // after every tap by _prewarmNext().
-            prewarmedPool: [],
+            // Counter for unique URL fragments per activation (forces frame-0
+            // restart on rapid re-taps — see activateGif).
             _activations: 0,
             // Hover state used by the delegated mousemove handler on
             // this.container — see _setupDelegatedListeners().
@@ -1421,37 +1419,17 @@ class GifSampler {
         this._prewarmNext(gifData);
     }
 
-    // Build a single decoded <img> off-DOM and push it onto the pre-warm pool.
-    // Each <img> uses a unique URL fragment so the browser doesn't dedup the
-    // decode with sibling pre-warmed copies (the bytes still come from cache).
+    // Fetch the animated WebP once and stash the Blob. Each activation will
+    // call URL.createObjectURL(blob) to mint a fresh, unique blob: URL so
+    // the browser treats every activation as a brand-new image resource
+    // (with its own animation timeline starting at frame 0) while the
+    // underlying bytes never re-leave RAM.
     _prewarmNext(gifData) {
-        if (gifData.prewarmedPool.length >= 3) return; // cap pool size
-        const baseSrc = gifData.gifSrc;
-        const tag = ++gifData._activations;
-        const img = document.createElement('img');
-        img.draggable = false;
-        img.alt = gifData.animatedImg.alt;
-        img.style.position = 'absolute';
-        img.style.top = '0';
-        img.style.left = '0';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
-        img.style.pointerEvents = 'none';
-        img.style.zIndex = '1';
-        img.style.display = 'none';
-        img.src = baseSrc + '#pw' + tag;
-        const ready = () => { gifData.prewarmedPool.push(img); };
-        if (typeof img.decode === 'function') {
-            img.decode().then(ready).catch(() => {
-                if (img.complete) ready();
-                else img.addEventListener('load', ready, { once: true });
-            });
-        } else if (img.complete) {
-            ready();
-        } else {
-            img.addEventListener('load', ready, { once: true });
-        }
+        if (gifData._blobPromise) return;
+        gifData._blobPromise = fetch(gifData.gifSrc, { cache: 'force-cache' })
+            .then(r => r.ok ? r.blob() : null)
+            .then(blob => { gifData._blob = blob || null; })
+            .catch(() => { gifData._blob = null; });
     }
 
     // Check if a screen point hits a non-transparent pixel of the GIF.
@@ -1697,38 +1675,68 @@ class GifSampler {
 
     // Unified GIF activation: show animation, play audio, auto-hide when audio ends
     activateGif(gifData) {
-        // Synchronous frame-0 restart using a pre-warmed, already-decoded <img>:
-        //   - Pop one ready <img> off gifData.prewarmedPool (built ahead of
-        //     time by _prewarmNext). Its decode is already complete.
-        //   - Insert it into the DOM and hide the placeholder. Both happen
-        //     in this same tick, so first frame paints on the very next
-        //     compositor pass (no decode() promise wait).
-        //   - Kick off another _prewarmNext so the next tap is also instant.
-        // If the pool is empty (cold first tap on a slow device, or > N very
-        // rapid taps), fall back to the in-line synchronous swap.
-        const pre = gifData.prewarmedPool.shift();
-        const fresh = pre || (() => {
-            const img = document.createElement('img');
-            img.draggable = false;
-            img.alt = gifData.animatedImg.alt;
-            img.style.position = 'absolute';
-            img.style.top = '0';
-            img.style.left = '0';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.pointerEvents = 'none';
-            img.style.zIndex = '1';
-            img.src = gifData.gifSrc + '#fb' + (++gifData._activations);
-            return img;
-        })();
-        fresh.style.display = 'block';
-
+        // Frame-0 restart via fresh blob URL. We fetched the WebP once at
+        // init (_prewarmNext) and kept the Blob in memory. Each activation
+        // mints a new URL.createObjectURL(blob) — a unique blob: URL that
+        // the browser treats as a brand-new image resource with its own
+        // animation timeline starting at frame 0. No network, no decode
+        // surprises.
+        // Fallback (blob not yet ready): use the file URL with a unique
+        // query param. Less reliable for animation restart, but avoids a
+        // dropped activation while the blob fetch is still in flight.
+        const fresh = document.createElement('img');
+        fresh.draggable = false;
+        fresh.alt = gifData.animatedImg.alt;
+        fresh.style.position = 'absolute';
+        fresh.style.top = '0';
+        fresh.style.left = '0';
+        fresh.style.width = '100%';
+        fresh.style.height = '100%';
+        fresh.style.objectFit = 'contain';
+        fresh.style.pointerEvents = 'none';
+        fresh.style.zIndex = '1';
+        ++gifData._activations;
+        let blobUrl = null;
+        if (gifData._blob) {
+            blobUrl = URL.createObjectURL(gifData._blob);
+            fresh.src = blobUrl;
+        } else {
+            fresh.src = gifData.gifSrc + '?a=' + gifData._activations;
+        }
         const oldImg = gifData.animatedImg;
+        // Insert the new img above (z-index 1, same as old). DON'T remove
+        // the old img or hide the placeholder yet — the new <img> hasn't
+        // decoded its first frame, so removing them now would expose a
+        // single-frame transparent gap on rapid re-taps.
         oldImg.parentNode.insertBefore(fresh, oldImg);
-        oldImg.remove();
         gifData.animatedImg = fresh;
-        gifData.placeholder.style.opacity = '0';
+
+        // Cross-fade swap: only after the new image has decoded do we
+        // hide the placeholder and remove the previous animated img.
+        const swapIn = () => {
+            gifData.placeholder.style.opacity = '0';
+            // Old img may have already been replaced by an even newer one
+            // (triple-tap); only remove if it's still in the DOM.
+            if (oldImg.parentNode) oldImg.remove();
+            // Now safe to revoke the previous blob URL.
+            if (oldBlobUrl) {
+                requestAnimationFrame(() => URL.revokeObjectURL(oldBlobUrl));
+            }
+        };
+        const oldBlobUrl = gifData._lastBlobUrl;
+        gifData._lastBlobUrl = blobUrl;
+        if (typeof fresh.decode === 'function') {
+            fresh.decode().then(swapIn).catch(() => {
+                // decode() can reject under exotic conditions (CORS,
+                // detached element). Fall back to load event / immediate.
+                if (fresh.complete) swapIn();
+                else fresh.addEventListener('load', swapIn, { once: true });
+            });
+        } else if (fresh.complete) {
+            swapIn();
+        } else {
+            fresh.addEventListener('load', swapIn, { once: true });
+        }
 
         // Visual trigger pulse: brief scale-up to confirm the activation,
         // even on the rare frames where the image hasn't repainted yet.
@@ -1738,7 +1746,7 @@ class GifSampler {
         void el.offsetWidth;
         el.classList.add('trigger-pulse');
 
-        // Refill the pool in the background.
+        // Make sure the bytes-cache warm-img stays referenced.
         this._prewarmNext(gifData);
         
         // Pick audio index: random from pool if multiple, else 0
@@ -1751,6 +1759,10 @@ class GifSampler {
         // Stop everything currently playing for this gif
         pool.forEach((a, i) => { if (i !== idx && !a.paused) { a.pause(); a.currentTime = 0; } });
         if (gifData.activeBufferNode) {
+            // Detach onended FIRST so the imminent stop()-triggered 'ended'
+            // event doesn't fire hideOnEnd against the new (about-to-be-
+            // inserted) animated img and snap it back to placeholder.
+            gifData.activeBufferNode.onended = null;
             try { gifData.activeBufferNode.stop(); } catch (_) {}
             gifData.activeBufferNode = null;
         }
