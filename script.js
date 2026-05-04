@@ -614,8 +614,23 @@ function setupRoomScrollOpen() {
         // Phase 2: slide the room + header + floor section up (all together, floor stays attached).
         // The peek at the bottom is achieved by margin-bottom on frame-inner, not by translating
         // elements — so the top row of cells stays fully visible at refresh.
+        // Phase 1 hint: nudge the room up while it's deepening, so the floor section peeks a
+        // tiny bit and signals "more content below if you keep scrolling".
+        // Smoothstep easing on both phases makes their velocities meet at zero at the boundary,
+        // so the perceived scrolling speed transitions smoothly instead of jumping from
+        // ~0.03 px/scroll-px to 1:1.
+        const PHASE1_PEEK = 20;
         const extra = Math.max(0, st - depth);
-        const ty = `translateY(${-extra}px)`;
+        const _floorTotal = Math.max(0, _floorH - PEEK);
+        const smoothstep = (x) => x * x * (3 - 2 * x); // 0→1 with eased start+end
+        const phase1Peek = PHASE1_PEEK * smoothstep(t); // 0 → 20 across phase 1, vel=0 at both ends
+        const phase2t = _floorTotal > 0 ? Math.min(1, extra / _floorTotal) : 0;
+        // Phase 2 carries the room from peek=20 down to peek=0 (so end alignment matches pre-hint),
+        // while extra grows by _floorTotal. Net displacement at end of phase 2 = _floorTotal.
+        const phase2Move = (_floorTotal) * smoothstep(phase2t) - PHASE1_PEEK * smoothstep(phase2t);
+        // When phase 2 hasn't started, only phase1Peek applies.
+        const totalY = extra > 0 ? (PHASE1_PEEK + phase2Move) : phase1Peek;
+        const ty = `translateY(${-totalY}px)`;
         if (roomWalls) roomWalls.style.transform = ty;
         if (headerCanvas) headerCanvas.style.transform = ty;
         if (floorSection) floorSection.style.transform = ty;
@@ -623,18 +638,20 @@ function setupRoomScrollOpen() {
         // Slide the bottom frame bar in during the last 30px of scroll,
         // tracking floor.bottom so the dark line stays continuous with the floor's L/R borders.
         // Also grow the scrollbar track bottom to keep the same 11px gap from the bar.
+        // Drive bar/panel off totalY (the actual floor displacement) — not raw `extra` —
+        // so the smoothstep easing in phase 2 doesn't desync the panel/floor bottom edges.
         const scrollBarEl = document.getElementById('custom-scrollbar');
         const rightPanelEl = document.getElementById('right-panel');
         const totalExtra = Math.max(0, _floorH - PEEK);
         const barEnter = Math.max(0, totalExtra - 30);
-        const barProgress = extra <= barEnter ? 0 : Math.min(1, (extra - barEnter) / 30);
+        const barProgress = totalY <= barEnter ? 0 : Math.min(1, (totalY - barEnter) / 30);
         if (bottomFrameBar) bottomFrameBar.style.transform = `translateY(${(1 - barProgress) * 30}px)`;
         // Scrollbar bottom: 11px inset from the right-panel bottom (0px from window),
         // growing by 30px as the bottom frame bar slides in so the thumb never overlaps it.
         if (scrollBarEl) scrollBarEl.style.bottom = (11 + barProgress * 30) + 'px';
         // Right-panel bottom: tracks the floor's visible bottom border so
         // the panel ends right at the inner frame line as soon as it appears.
-        const panelTarget = 45 + extra - _floorH + 2.5;
+        const panelTarget = 45 + totalY - _floorH + 2.5;
         if (rightPanelEl) rightPanelEl.style.bottom = Math.max(0, panelTarget) + 'px';
         // Retrigger scrollbar thumb calc now so it uses the new track height.
         if (_scrollbarUpdate) _scrollbarUpdate();
