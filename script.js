@@ -959,18 +959,42 @@ class GifSampler {
         // Resume the Web Audio context on the first user gesture.
         // iOS creates AudioContexts in 'suspended' state and requires a gesture
         // to start them. Once resumed, it stays running for the session.
+        // We also play a silent 1-sample buffer through the destination — this
+        // is the canonical iOS "web-audio unlock" trick that fully wakes the
+        // pipeline; without it, ctx.resume() sometimes succeeds but later
+        // start() calls still produce no sound until the user interacts again.
+        let _audioUnlocked = false;
         const tryUnlockAudio = () => {
+            if (_audioUnlocked) return;
             const ctx = getAudioContext();
-            if (ctx && ctx.state === 'suspended') {
-                ctx.resume().catch(() => {});
+            if (!ctx) return;
+            const finishUnlock = () => {
+                try {
+                    const buf = ctx.createBuffer(1, 1, 22050);
+                    const src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(ctx.destination);
+                    src.start(0);
+                } catch (_) {}
+                _audioUnlocked = true;
+                document.removeEventListener('click', tryUnlockAudio, true);
+                document.removeEventListener('touchstart', tryUnlockAudio, true);
+                document.removeEventListener('touchend', tryUnlockAudio, true);
+                document.removeEventListener('keydown', tryUnlockAudio, true);
+            };
+            if (ctx.state === 'suspended') {
+                ctx.resume().then(finishUnlock).catch(finishUnlock);
+            } else {
+                finishUnlock();
             }
-            document.removeEventListener('click', tryUnlockAudio);
-            document.removeEventListener('touchstart', tryUnlockAudio);
-            document.removeEventListener('keydown', tryUnlockAudio);
         };
-        document.addEventListener('click', tryUnlockAudio);
-        document.addEventListener('touchstart', tryUnlockAudio);
-        document.addEventListener('keydown', tryUnlockAudio);
+        // Capture phase so this runs BEFORE per-element handlers (e.g. gif
+        // touchstart that calls activateGif) — by the time the gif handler
+        // fires, the context is already running.
+        document.addEventListener('click', tryUnlockAudio, true);
+        document.addEventListener('touchstart', tryUnlockAudio, true);
+        document.addEventListener('touchend', tryUnlockAudio, true);
+        document.addEventListener('keydown', tryUnlockAudio, true);
     }
 
     setupKeyboardListeners() {
@@ -1551,14 +1575,22 @@ class GifSampler {
 
     // Unified GIF activation: show animation, play audio, auto-hide when audio ends
     activateGif(gifData) {
-        // Show animated GIF
+        // Show animated GIF.
+        // If the gif is already showing (rapid re-tap), skip the src reset:
+        // re-decoding the GIF on every tap caused a visible "frozen frame"
+        // stutter because the audio (Web Audio buffer) starts in <1ms while
+        // the image decode takes 30–150ms. Letting the existing animation keep
+        // running while the new audio fires feels much more responsive.
+        const wasShowing = gifData.animatedImg.style.display === 'block';
         gifData.placeholder.style.display = 'none';
         gifData.animatedImg.style.display = 'block';
-        
-        // Reload GIF to restart animation
-        const src = gifData.animatedImg.src;
-        gifData.animatedImg.src = '';
-        gifData.animatedImg.src = src;
+
+        if (!wasShowing) {
+            // First-tap (or post-end) restart: reload to play from frame 0.
+            const src = gifData.animatedImg.src;
+            gifData.animatedImg.src = '';
+            gifData.animatedImg.src = src;
+        }
         
         // Pick audio index: random from pool if multiple, else 0
         const pool = gifData.audioPool || [gifData.audio];
