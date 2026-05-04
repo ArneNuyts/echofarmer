@@ -746,11 +746,12 @@ window.addEventListener('load', () => {
     const show = () => {
         if (dismissed) return;
         modal.hidden = false;
-        // Centre the modal using explicit left/top (removes the CSS translate so
-        // drag repositioning works correctly with simple left/top updates).
+        // Centre the modal using explicit left/top (drop the CSS centring
+        // translate via .positioned so drag repositioning works correctly
+        // and the CSS :hover scale rule isn't overridden by inline transform).
         const mw = modal.offsetWidth || 360;
         const mh = modal.offsetHeight || 80;
-        modal.style.transform = 'none';
+        modal.classList.add('positioned');
         modal.style.left = Math.round((window.innerWidth  - mw) / 2) + 'px';
         modal.style.top  = Math.round((window.innerHeight - mh) / 2) + 'px';
         // Force layout flush so the opacity transition runs.
@@ -1010,6 +1011,9 @@ class GifSampler {
     }
 
     init() {
+        // Wire the delegated container-level listeners once, before any gifs
+        // exist (no per-gif handlers needed afterwards).
+        this._setupDelegatedListeners();
         // Scale GIFs 2x on desktop, keep original size on mobile
         const sizeMultiplier = isMobile ? 1 : 2;
         // In room mode keep gifs within the visible frame (no scrolling reveals them).
@@ -1121,6 +1125,9 @@ class GifSampler {
         // Debounce window resize for cheap, jitter-free updates
         let resizeRaf = null;
         window.addEventListener('resize', () => {
+            // Hover hit-test rect cache must be invalidated immediately on
+            // any layout change so the next mousemove re-measures.
+            this._invalidateGifRects();
             if (resizeRaf !== null) return;
             resizeRaf = requestAnimationFrame(() => {
                 resizeRaf = null;
@@ -1141,6 +1148,13 @@ class GifSampler {
                 }
             });
         });
+
+        // Any scroll changes element viewport position \u2014 invalidate hit-test
+        // rects passively (no layout work needed here).
+        const onScroll = () => this._invalidateGifRects();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        const tableScroll = document.getElementById('table-scroll');
+        if (tableScroll) tableScroll.addEventListener('scroll', onScroll, { passive: true });
     }
 
     nudgeApart() {
@@ -1290,30 +1304,10 @@ class GifSampler {
         gifDiv.appendChild(animatedImg);
         const gifIndex = index;
         const hoverMsg = `Click me or press (${this.keyLabels[gifIndex]}). Drag me to move me to a new spot.`;
-        // Hover info AND visual hover effect are alpha-aware: both only
-        // activate when the cursor is over a non-transparent pixel of the gif.
-        // The .solid-hover class drives the CSS scale/cursor; setHoverInfo
-        // drives the bottom-bar info text. Kept in sync via one mousemove.
-        let _hoverActive = false;
-        gifDiv.addEventListener('mousemove', (e) => {
-            const onSolid = this.isPointOnGif(gifData, e.clientX, e.clientY);
-            if (onSolid && !_hoverActive) {
-                _hoverActive = true;
-                gifDiv.classList.add('solid-hover');
-                setHoverInfo(hoverMsg);
-            } else if (!onSolid && _hoverActive) {
-                _hoverActive = false;
-                gifDiv.classList.remove('solid-hover');
-                setHoverInfo('');
-            }
-        });
-        gifDiv.addEventListener('mouseleave', () => {
-            if (_hoverActive) {
-                _hoverActive = false;
-                gifDiv.classList.remove('solid-hover');
-                setHoverInfo('');
-            }
-        });
+        // Hover info AND visual hover effect are alpha-aware. They are wired
+        // up via a single delegated mousemove handler on this.container (see
+        // _setupDelegatedListeners), so this element itself has no hover
+        // listeners. The handler reads .hoverMsg / ._hoverActive off gifData.
         this.container.appendChild(gifDiv);
 
         // Build audio pool: either a single source or a list of randomized samples
@@ -1368,8 +1362,15 @@ class GifSampler {
             // synchronously on the next activation. Refilled in the background
             // after every tap by _prewarmNext().
             prewarmedPool: [],
-            _activations: 0
+            _activations: 0,
+            // Hover state used by the delegated mousemove handler on
+            // this.container — see _setupDelegatedListeners().
+            hoverMsg: hoverMsg,
+            _hoverActive: false
         };
+        // Back-reference so delegated listeners can locate gifData from the
+        // event target via event.target.closest('.gif-item')._gifData.
+        gifDiv._gifData = gifData;
 
         // Build alpha mask from a dedicated alpha image when provided (config.alphaImg),
         // otherwise fall back to the static placeholder PNG.
@@ -1456,7 +1457,14 @@ class GifSampler {
     // Check if a screen point hits a non-transparent pixel of the GIF.
     // Falls back to a 15% inset hit-area if alpha mask isn't available.
     isPointOnGif(gifData, clientX, clientY) {
-        const rect = gifData.element.getBoundingClientRect();
+        // Cache the bounding rect: getBoundingClientRect() forces a layout
+        // flush, so calling it on every mousemove (the hot path for hover
+        // alpha-detection) was a measurable cost. The rect is invalidated
+        // by drag, scroll and resize — see _invalidateGifRects() below.
+        let rect = gifData._cachedRect;
+        if (!rect) {
+            rect = gifData._cachedRect = gifData.element.getBoundingClientRect();
+        }
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
         if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height) return false;
@@ -1509,179 +1517,182 @@ class GifSampler {
             && localY >= insetY && localY <= rect.height - insetY;
     }
 
+    // Invalidate cached bounding rects for all gifs. Called on resize/scroll
+    // and at drag boundaries so the next isPointOnGif() re-measures.
+    _invalidateGifRects() {
+        for (const g of this.gifs) g._cachedRect = null;
+    }
+
     attachEventListeners(gifData) {
-        if (isMobile) {
-            this.attachMobileListeners(gifData);
-        } else {
-            this.attachDesktopListeners(gifData);
-        }
+        // Per-gif listeners are now delegated on this.container — see
+        // _setupDelegatedListeners(). This keeps the listener count constant
+        // (5 listeners total) instead of scaling with the gif count and
+        // means new gifs Just Work without re-wiring.
+        // Nothing per-gif to do; back-pointer (element._gifData) is set in
+        // createGifElement.
     }
 
-    attachDesktopListeners(gifData) {
-        const { element } = gifData;
+    // Resolve which gifData (if any) is the target of a pointer event by
+    // walking up the DOM from event.target to the nearest .gif-item.
+    _gifDataFromEvent(e) {
+        const t = e.target;
+        if (!t || !t.closest) return null;
+        const el = t.closest('.gif-item');
+        return el ? el._gifData : null;
+    }
 
-        // Hover only updates cursor (visual feedback), no animation playback yet
-        element.addEventListener('mousemove', (e) => {
-            if (gifData.isDragging) return;
-            const onSolid = this.isPointOnGif(gifData, e.clientX, e.clientY);
-            // Update cursor based on hit area
-            element.style.cursor = onSolid ? 'grab' : 'default';
-        });
+    // Wire the five delegated listeners exactly once. Safe to call multiple
+    // times (idempotent via the _delegatedReady flag).
+    _setupDelegatedListeners() {
+        if (this._delegatedReady) return;
+        this._delegatedReady = true;
+        const container = this.container;
 
-        // Drag functionality - audio already started on mousedown
-        element.addEventListener('mousedown', (e) => {
-            // Only start interaction if on a solid (non-transparent) pixel
-            if (!this.isPointOnGif(gifData, e.clientX, e.clientY)) return;
-            
-            e.preventDefault();
-            
-            // Start playing audio immediately on mousedown
-            this.activateGif(gifData);
-            element.style.zIndex = ++_topZ;
-            
-            gifData.dragStartTime = Date.now();
-            gifData.isDragging = false;
-
-            const rect = element.getBoundingClientRect();
-            const offsetX = e.clientX - rect.left;
-            const offsetY = e.clientY - rect.top;
-
-            const onMouseMove = (e) => {
-                // Check if dragging is locked
-                if (isDraggingLocked) return;
-                
-                const dragDuration = Date.now() - gifData.dragStartTime;
-                
-                // Consider it a drag after 200ms or 10px movement
-                if (dragDuration > 200 || !gifData.isDragging) {
-                    gifData.isDragging = true;
-                    const gifContainer = document.getElementById('gif-container');
-                    const frameRect = gifContainer.getBoundingClientRect();
-                    
-                    let newLeft = e.clientX - frameRect.left - offsetX;
-                    let newTop = e.clientY - frameRect.top - offsetY;
-                    
-                    element.style.left = newLeft + 'px';
-                    element.style.top = newTop + 'px';
+        // ── Desktop: hover (mousemove) + activate/drag (mousedown) ──
+        if (!isMobile) {
+            container.addEventListener('mousemove', (e) => {
+                const gifData = this._gifDataFromEvent(e);
+                if (!gifData) return;
+                if (gifData.isDragging) return;
+                const onSolid = this.isPointOnGif(gifData, e.clientX, e.clientY);
+                if (onSolid && !gifData._hoverActive) {
+                    gifData._hoverActive = true;
+                    gifData.element.classList.add('solid-hover');
+                    setHoverInfo(gifData.hoverMsg);
+                } else if (!onSolid && gifData._hoverActive) {
+                    gifData._hoverActive = false;
+                    gifData.element.classList.remove('solid-hover');
+                    setHoverInfo('');
                 }
-            };
+            });
 
-            const onMouseUp = () => {
-                // Let audio continue playing until it finishes
-                
-                setTimeout(() => {
-                    gifData.isDragging = false;
-                }, 100);
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            };
+            // mouseout fires when the cursor leaves a gif-item even within
+            // the same container (unlike mouseleave which we'd need per-el).
+            container.addEventListener('mouseout', (e) => {
+                const fromGif = e.target && e.target.closest && e.target.closest('.gif-item');
+                if (!fromGif) return;
+                // If moving to a child of the same gif, ignore.
+                const to = e.relatedTarget;
+                if (to && fromGif.contains(to)) return;
+                const gifData = fromGif._gifData;
+                if (gifData && gifData._hoverActive) {
+                    gifData._hoverActive = false;
+                    fromGif.classList.remove('solid-hover');
+                    setHoverInfo('');
+                }
+            });
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        });
-    }
+            container.addEventListener('mousedown', (e) => {
+                const gifData = this._gifDataFromEvent(e);
+                if (!gifData) return;
+                if (!this.isPointOnGif(gifData, e.clientX, e.clientY)) return;
+                e.preventDefault();
 
-    attachMobileListeners(gifData) {
-        const { element } = gifData;
-        let longPressTimeout;
-        let isActiveTouchOnElement = false;
+                const element = gifData.element;
+                this.activateGif(gifData);
+                element.style.zIndex = ++_topZ;
 
-        element.addEventListener('touchstart', (e) => {
+                gifData.dragStartTime = Date.now();
+                gifData.isDragging = false;
+
+                const rect = element.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const offsetY = e.clientY - rect.top;
+
+                const onMouseMove = (ev) => {
+                    if (isDraggingLocked) return;
+                    const dragDuration = Date.now() - gifData.dragStartTime;
+                    if (dragDuration > 200 || !gifData.isDragging) {
+                        gifData.isDragging = true;
+                        const gifContainer = document.getElementById('gif-container');
+                        const frameRect = gifContainer.getBoundingClientRect();
+                        let newLeft = ev.clientX - frameRect.left - offsetX;
+                        let newTop = ev.clientY - frameRect.top - offsetY;
+                        element.style.left = newLeft + 'px';
+                        element.style.top = newTop + 'px';
+                        gifData._cachedRect = null;
+                    }
+                };
+                const onMouseUp = () => {
+                    setTimeout(() => { gifData.isDragging = false; }, 100);
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+            return;
+        }
+
+        // ── Mobile: touchstart (activate / drag begin) ──
+        container.addEventListener('touchstart', (e) => {
+            const gifData = this._gifDataFromEvent(e);
+            if (!gifData) return;
+            const element = gifData.element;
             // Use changedTouches[0]: the touch that triggered THIS event.
-            // e.touches[0] is the OLDEST active touch on the page, so when a
-            // second finger lands on a different gif while the first is still
-            // held, e.touches[0] would still be the first finger and the
-            // second gif would never activate (breaks multi-touch polyphony).
             const touch = e.changedTouches[0];
             const touchId = touch.identifier;
-            // Only respond to touches on non-transparent pixels
             if (!this.isPointOnGif(gifData, touch.clientX, touch.clientY)) return;
             e.preventDefault();
-            // Stop the event bubbling to the gif container so the container's
-            // touch-to-scroll forwarding doesn't fight this gesture.
             e.stopPropagation();
 
-            // Unlock AudioContext immediately — must happen inside a direct
-            // user-gesture handler (before any async gap) to work on iOS.
             const _ctx = getAudioContext();
             if (_ctx && _ctx.state === 'suspended') _ctx.resume().catch(() => {});
 
-            // Show a brief hint toast on first interaction
             showToast('Tap to play · Drag to move');
-
-            // Start playing audio immediately on touch
             this.activateGif(gifData);
-            
-            isActiveTouchOnElement = true;
+
+            let isActiveTouchOnElement = true;
             gifData.dragStartTime = Date.now();
             gifData.touchStartX = touch.clientX;
             gifData.touchStartY = touch.clientY;
-            
+
             const rect = element.getBoundingClientRect();
             gifData.elementStartX = rect.left;
             gifData.elementStartY = rect.top;
 
-            // Long press detection for dragging
-            longPressTimeout = setTimeout(() => {
+            const longPressTimeout = setTimeout(() => {
                 gifData.isDragging = true;
             }, 200);
 
-            // Setup document-level touch handlers
-            // Find this gesture's specific touch by identifier so multi-touch
-            // (other fingers on other gifs) doesn't hijack our move/end.
             const findOurTouch = (touchList) => {
                 for (let i = 0; i < touchList.length; i++) {
                     if (touchList[i].identifier === touchId) return touchList[i];
                 }
                 return null;
             };
-            const onTouchMove = (e) => {
+            const onTouchMove = (ev) => {
                 if (!isActiveTouchOnElement) return;
-                const touch = findOurTouch(e.touches);
-                if (!touch) return;
-                e.preventDefault();
-                
-                const deltaX = touch.clientX - gifData.touchStartX;
-                const deltaY = touch.clientY - gifData.touchStartY;
-
-                // If moved more than 10px, it's a drag
+                const t = findOurTouch(ev.touches);
+                if (!t) return;
+                ev.preventDefault();
+                const deltaX = t.clientX - gifData.touchStartX;
+                const deltaY = t.clientY - gifData.touchStartY;
                 if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
                     gifData.isDragging = true;
                 }
-
                 if (gifData.isDragging && !isDraggingLocked) {
                     const gifContainer = document.getElementById('gif-container');
                     const frameRect = gifContainer.getBoundingClientRect();
-                    
                     let newLeft = gifData.elementStartX - frameRect.left + deltaX;
                     let newTop = gifData.elementStartY - frameRect.top + deltaY;
-                    
                     element.style.left = newLeft + 'px';
                     element.style.top = newTop + 'px';
+                    gifData._cachedRect = null;
                 }
             };
-
-            const onTouchEnd = (e) => {
+            const onTouchEnd = (ev) => {
                 if (!isActiveTouchOnElement) return;
-                // Only react when OUR finger is the one that lifted.
-                if (!findOurTouch(e.changedTouches)) return;
-
+                if (!findOurTouch(ev.changedTouches)) return;
                 isActiveTouchOnElement = false;
                 clearTimeout(longPressTimeout);
-                
-                // Let audio continue playing until it finishes
-                
-                setTimeout(() => {
-                    gifData.isDragging = false;
-                }, 100);
-                
+                setTimeout(() => { gifData.isDragging = false; }, 100);
                 document.removeEventListener('touchmove', onTouchMove);
                 document.removeEventListener('touchend', onTouchEnd);
             };
-
             document.addEventListener('touchmove', onTouchMove, { passive: false });
             document.addEventListener('touchend', onTouchEnd);
-        });
+        }, { passive: false });
     }
 
     // Unified GIF activation: show animation, play audio, auto-hide when audio ends
@@ -2211,6 +2222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollBar.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere in the website to make more space.'));
         scrollBar.addEventListener('mouseleave', () => setHoverInfo(''));
     }
+    // The dark right-panel hosts the custom scrollbar and shares its purpose,
+    // so hovering it also surfaces the same hint.
+    const rightPanel = document.getElementById('right-panel');
+    if (rightPanel && !isMobile) {
+        rightPanel.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere in the website to make more space.'));
+        rightPanel.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
 });
 
 // Fetch Bandsintown shows and display them
@@ -2240,7 +2258,8 @@ async function fetchBandsintown() {
         });
 
         if (upcomingEvents.length === 0) {
-            showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">No upcoming shows currently scheduled</p></div>';
+            // Build the empty-state element with safe DOM APIs (no innerHTML).
+            showsContainer.replaceChildren(buildShowMessage('No upcoming shows currently scheduled'));
             if (_syncFloorHeight) _syncFloorHeight();
             if (_scrollbarUpdate) _scrollbarUpdate();
             return;
@@ -2249,14 +2268,42 @@ async function fetchBandsintown() {
         displayShows(upcomingEvents, showsContainer);
     } catch (error) {
         console.error('Bandsintown fetch error:', error);
-        showsContainer.innerHTML = '<div class="show-item" style="border: none; padding-left: 0;"><p style="color: #5d5343; font-size: 12px;">Unable to load shows — <a href="https://www.bandsintown.com/a/15583965-echofarmer" target="_blank" style="color: #5d5343; text-decoration: underline;">view on Bandsintown</a></p></div>';
+        showsContainer.replaceChildren(buildShowMessage('Unable to load shows — ', {
+            linkText: 'view on Bandsintown',
+            linkHref: 'https://www.bandsintown.com/a/15583965-echofarmer'
+        }));
         if (_syncFloorHeight) _syncFloorHeight();
         if (_scrollbarUpdate) _scrollbarUpdate();
     }
 }
 
+// Build a single "empty/error" show item without innerHTML.
+function buildShowMessage(text, link) {
+    const item = document.createElement('div');
+    item.className = 'show-item';
+    item.style.border = 'none';
+    item.style.paddingLeft = '0';
+    const p = document.createElement('p');
+    p.style.color = '#5d5343';
+    p.style.fontSize = '12px';
+    p.appendChild(document.createTextNode(text));
+    if (link && /^https?:\/\//i.test(link.linkHref)) {
+        const a = document.createElement('a');
+        a.href = link.linkHref;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.color = '#5d5343';
+        a.style.textDecoration = 'underline';
+        a.textContent = link.linkText || link.linkHref;
+        p.appendChild(a);
+    }
+    item.appendChild(p);
+    return item;
+}
+
 function displayShows(events, container) {
-    container.innerHTML = '';
+    // Clear previous content safely.
+    container.replaceChildren();
 
     events.forEach(event => {
         const eventDate = new Date(event.datetime);
@@ -2268,19 +2315,42 @@ function displayShows(events, container) {
 
         // Bandsintown puts the actual show title in event.title
         // and venue.name often duplicates it. Prefer event.title when available.
-        const title = event.title || (event.venue && event.venue.name) || 'TBA';
-        const location = event.venue ? `${event.venue.city}, ${event.venue.country}` : '';
+        const title = (event.title || (event.venue && event.venue.name) || 'TBA') + '';
+        const location = event.venue ? `${event.venue.city || ''}, ${event.venue.country || ''}` : '';
 
-        // Build clickable link if event URL exists
-        const eventUrl = event.url || '';
+        // Build clickable link only if event URL is a safe http(s) URL.
+        // Anything else (javascript:, data:, etc.) is silently dropped to
+        // mitigate XSS via a compromised/malicious upstream response.
+        const rawUrl = (event.url || '') + '';
+        const eventUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : '';
 
         const showEl = document.createElement('div');
         showEl.className = 'show-item';
-        showEl.innerHTML = `
-            <div class="show-date">${dateStr}</div>
-            <div class="show-venue">${eventUrl ? `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">${title}</a>` : title}</div>
-            <div class="show-location">${location}</div>
-        `;
+
+        const dateEl = document.createElement('div');
+        dateEl.className = 'show-date';
+        dateEl.textContent = dateStr;
+
+        const venueEl = document.createElement('div');
+        venueEl.className = 'show-venue';
+        if (eventUrl) {
+            const a = document.createElement('a');
+            a.href = eventUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = title;
+            venueEl.appendChild(a);
+        } else {
+            venueEl.textContent = title;
+        }
+
+        const locationEl = document.createElement('div');
+        locationEl.className = 'show-location';
+        locationEl.textContent = location;
+
+        showEl.appendChild(dateEl);
+        showEl.appendChild(venueEl);
+        showEl.appendChild(locationEl);
         container.appendChild(showEl);
     });
     // Re-measure floor height: shows content is loaded async after the initial
@@ -2332,7 +2402,7 @@ function createVideoPad() {
     const urlInput = document.createElement('input');
     urlInput.className = 'video-url';
     urlInput.type = 'text';
-    urlInput.placeholder = 'Paste video URL here…';
+    urlInput.placeholder = 'Paste YouTube URL here…';
 
     // Close button — placed in grid col2/row1 (aligned with url and vol column)
     const closeBtn = document.createElement('button');
@@ -2408,7 +2478,7 @@ function createVideoPad() {
     if (isMobile) {
         stagePlaceholder.innerHTML =
             `<div class="ph-list">` +
-            `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
+            `<span class="ph-num">1.</span><span class="ph-text">Paste a YouTube URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Hold the video area to play. Release to stop.</span>` +
             `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag the timeline left\u2009/\u2009right<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
             `</div>` +
@@ -2416,7 +2486,7 @@ function createVideoPad() {
     } else {
         stagePlaceholder.innerHTML =
             `<div class="ph-list">` +
-            `<span class="ph-num">1.</span><span class="ph-text">Paste a video URL above.</span>` +
+            `<span class="ph-num">1.</span><span class="ph-text">Paste a YouTube URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. That key can now launch the video.</span>` +
             `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point either...</span>` +
             `<span class="ph-num"></span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
@@ -2424,6 +2494,15 @@ function createVideoPad() {
             `</div>`;
     }
     stage.appendChild(stagePlaceholder);
+
+    // Persistent error overlay shown when the pasted URL is not a valid
+    // YouTube link. Always visible while present (independent of info-toggle
+    // state) until the user pastes a new URL.
+    const stageError = document.createElement('div');
+    stageError.className = 'video-stage-error';
+    stageError.textContent = 'URL not valid';
+    stageError.hidden = true;
+    stage.appendChild(stageError);
 
     // On mobile: hold the stage to play, release to stop (replaces the PLAY button)
     if (isMobile) {
@@ -2585,48 +2664,58 @@ function createVideoPad() {
 
     function loadUrl(raw) {
         const url = raw.trim(); if (!url) return;
-        // Keep the explainer visible — it's only hidden once playback starts.
+        // Whitelist: only real YouTube watch / shorts / youtu.be URLs are
+        // accepted. Everything else — arbitrary http(s) MP4s, javascript:,
+        // data:, file:… — is rejected and surfaced via stageError.
+        // Reasoning: the previous implementation passed any string straight
+        // into <video src>, which made it easy to accidentally try to load
+        // unsupported streams (or, in some browser configurations, leak
+        // local files via file:// URIs).
+        const id = isYT(url) ? getYTId(url) : null;
+        if (!id) {
+            // Reset state but show the persistent error overlay instead of
+            // the instructional placeholder.
+            resetPlayer();
+            stagePlaceholder.style.display = 'none';
+            stageError.hidden = false;
+            urlInput.style.background = '';
+            return;
+        }
+        // Hide any previous error, keep the explainer visible — it's only
+        // hidden once playback starts.
+        stageError.hidden = true;
         resetPlayer();
-        if (isYT(url)) {
-            const id = getYTId(url); if (!id) return;
-            ytWrapper.hidden = false;
-            loadYTApi(() => {
-                // Create a fresh inner target — YT.Player replaces this, not ytWrapper
-                const ytTarget = document.createElement('div');
-                ytTarget.style.width = '100%';
-                ytTarget.style.height = '100%';
-                ytWrapper.appendChild(ytTarget);
-                ytPlayer = new YT.Player(ytTarget, {
-                    videoId: id,
-                    width: '100%',
-                    height: '100%',
-                    playerVars: { rel: 0, enablejsapi: 1, controls: 0, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, fs: 0, modestbranding: 1 },
-                    events: {
-                        onReady() {
-                            ytReady = true;
-                            ytPlayer.setVolume(volValue * 100);
-                            startYTPoll();
-                            markUrlLoaded();
-                        },
-                        onStateChange(e) {
-                            if (e.data === YT.PlayerState.PLAYING) {
-                                isPlaying = true; hasPlayed = true; triggerBtn.textContent = '■  STOP'; triggerBtn.classList.add('active');
-                                stagePlaceholder.style.display = 'none';
-                            } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
-                                isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
-                                showPlaceholder();
-                            }
+        ytWrapper.hidden = false;
+        loadYTApi(() => {
+            // Create a fresh inner target — YT.Player replaces this, not ytWrapper
+            const ytTarget = document.createElement('div');
+            ytTarget.style.width = '100%';
+            ytTarget.style.height = '100%';
+            ytWrapper.appendChild(ytTarget);
+            ytPlayer = new YT.Player(ytTarget, {
+                videoId: id,
+                width: '100%',
+                height: '100%',
+                playerVars: { rel: 0, enablejsapi: 1, controls: 0, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, fs: 0, modestbranding: 1 },
+                events: {
+                    onReady() {
+                        ytReady = true;
+                        ytPlayer.setVolume(volValue * 100);
+                        startYTPoll();
+                        markUrlLoaded();
+                    },
+                    onStateChange(e) {
+                        if (e.data === YT.PlayerState.PLAYING) {
+                            isPlaying = true; hasPlayed = true; triggerBtn.textContent = '■  STOP'; triggerBtn.classList.add('active');
+                            stagePlaceholder.style.display = 'none';
+                        } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
+                            isPlaying = false; triggerBtn.textContent = '▶  PLAY'; triggerBtn.classList.remove('active');
+                            showPlaceholder();
                         }
                     }
-                });
+                }
             });
-        } else {
-            videoEl.hidden = false;
-            videoEl.src = url;
-            videoEl.volume = volValue;
-            videoEl.load();
-            _connectVideoToChain();
-        }
+        });
     }
 
     let startScrubPos = 0;
@@ -2782,8 +2871,16 @@ function createVideoPad() {
         if (e.key === 'Enter') { loadUrl(urlInput.value); urlInput.blur(); }
     });
     urlInput.addEventListener('paste', () => setTimeout(() => { loadUrl(urlInput.value); urlInput.blur(); }, 0));
-    urlInput.addEventListener('input', () => { if (!urlInput.value.trim()) urlInput.style.background = ''; });
-    urlInput.addEventListener('mouseenter', () => setHoverInfo('Paste video URL here.'));
+    urlInput.addEventListener('input', () => {
+        if (!urlInput.value.trim()) {
+            urlInput.style.background = '';
+            // User cleared the field — also clear any "URL not valid" overlay
+            // and re-show the instructional placeholder.
+            stageError.hidden = true;
+            showPlaceholder();
+        }
+    });
+    urlInput.addEventListener('mouseenter', () => setHoverInfo('Paste YouTube URL here.'));
     urlInput.addEventListener('mouseleave', () => setHoverInfo(''));
 
     // ── Trigger (hold to play) ──

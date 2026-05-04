@@ -4,10 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>echofarmer</title>
+    <!--
+      Content Security Policy (defence-in-depth against XSS).
+      GitHub Pages doesn't set a CSP header for you, so we set one via
+      <meta>. The policy enumerates every external origin we actually use:
+        • self                       — our own HTML/CSS/JS/audio/images
+        • fonts.googleapis.com       — the Geist webfont stylesheet
+        • fonts.gstatic.com          — the Geist font files themselves
+        • rest.bandsintown.com       — upcoming-shows JSON feed
+        • www.youtube.com / s.ytimg.com / i.ytimg.com
+                                       — the IFrame Player API + iframe
+      'unsafe-inline' for style-src is required because the JS pervasively
+      sets element.style.left / .transform etc. (treated as inline styles).
+      script-src has NO 'unsafe-inline'/'unsafe-eval' — inline <script> and
+      eval() are blocked, which is the main XSS payoff of CSP.
+      frame-ancestors 'none' = nobody can iframe this site (clickjacking
+      protection, replaces the X-Frame-Options header).
+      upgrade-insecure-requests rewrites any accidental http:// asset URL
+      to https:// at request time.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' https://www.youtube.com https://s.ytimg.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https://i.ytimg.com;
+      media-src 'self';
+      connect-src 'self' https://rest.bandsintown.com;
+      frame-src https://www.youtube.com https://www.youtube-nocookie.com;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+      object-src 'none';
+      upgrade-insecure-requests
+    ">
+    <!-- Don't leak the full URL (incl. query string) when navigating to
+         external links. strict-origin-when-cross-origin sends only the
+         origin (https://echofarmer.com) to third parties. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <!-- Stop iOS Safari from auto-linking phone numbers in body text. -->
+    <meta name="format-detection" content="telephone=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <!--
+      Preload the animated WebP gif assets so the browser starts fetching
+      them before script.js parses, eliminates the first-activation network
+      wait, and lets the pre-warm pool decode immediately on init.
+    -->
+    <link rel="preload" as="image" href="gifs/blue_dolphin.webp" type="image/webp">
+    <link rel="preload" as="image" href="gifs/pink_dolphin.webp" type="image/webp">
+    <link rel="preload" as="image" href="gifs/wolk-1.webp" type="image/webp">
+    <link rel="preload" as="image" href="gifs/wolk-2.webp" type="image/webp">
+    <link rel="preload" as="image" href="gifs/something-bw.webp" type="image/webp">
     <style>body { opacity: 0; }</style>
 </head>
 <body class="room-mode open-bottom-mode">

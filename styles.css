@@ -466,7 +466,7 @@ body.room-mode #gif-container {
    image swap hasn't repainted yet. Outranks .solid-hover via animation. */
 @keyframes gif-trigger-pulse {
     0%   { transform: scale(1.05); }
-    40%  { transform: scale(1.18); }
+    40%  { transform: scale(1.10); }
     100% { transform: scale(1.05); }
 }
 .gif-item.trigger-pulse {
@@ -909,6 +909,26 @@ body.room-mode #gif-container {
     line-height: 1.7;
     pointer-events: none;
 }
+
+/* Persistent "URL not valid" overlay shown when the user pastes anything
+   that isn't a recognized YouTube URL. Sits above the instructional
+   placeholder (z:4) and stays visible regardless of the info-toggle state.
+   Hidden via the [hidden] attribute, cleared on next paste / input clear. */
+.video-stage-error {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Geist', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #dfdcd8;
+    pointer-events: none;
+}
+.video-stage-error[hidden] { display: none; }
 /* Footnote inside the mobile placeholder explaining iOS audio limitations. */
 .ph-note {
     font-size: 9px;
@@ -1320,11 +1340,16 @@ body.room-mode #gif-container {
     color: #1b1916;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.3s ease;
     cursor: move;
     user-select: none;
 }
+/* Once JS has set explicit left/top (after show()), drop the centring
+   translate so CSS hover scale composes cleanly without fighting it. */
+.welcome-modal.positioned { transform: none; }
 .welcome-modal.visible { opacity: 1; }
+/* Hover scale-up matches the gif items. */
+.welcome-modal.positioned:hover { transform: scale(1.05); }
 .welcome-title {
     font-size: 13px;
     font-weight: 700;

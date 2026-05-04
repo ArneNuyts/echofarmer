@@ -66,6 +66,67 @@ The `server.py` script:
 - Automatically fetches the latest shows from your Bandsintown artist page (id: 15583965)
 - Updates whenever you reload the page (no caching)
 
+> ⚠️ **`server.py` is a development tool only.** It binds to `127.0.0.1`, has
+> no auth/rate-limiting, and disables HTTP caching. **Never deploy it to a
+> public host.** Production runs as static files on GitHub Pages — the
+> Bandsintown feed is fetched directly from the browser there, no proxy
+> needed.
+
+## Deployment (GitHub Pages + custom domain)
+
+This site is designed to be served as **static files** from GitHub Pages.
+No backend is required in production.
+
+### One-time setup when linking a custom domain (e.g. via GoDaddy)
+
+1. **DNS at GoDaddy** — point your apex domain at GitHub Pages:
+   - Four `A` records on `@` → `185.199.108.153`, `185.199.109.153`,
+     `185.199.110.153`, `185.199.111.153`
+   - One `CNAME` on `www` → `<your-github-username>.github.io`
+2. **Repo settings** → *Pages* → set the custom domain to your GoDaddy
+   domain. GitHub will provision a Let's Encrypt certificate (can take a
+   few minutes to a few hours).
+3. **Enable "Enforce HTTPS"** in the same Pages settings panel as soon as
+   the certificate is issued. This redirects all `http://` traffic to
+   `https://` and is critical for security.
+4. **Add a `CNAME` file** to the repo root containing your domain on a
+   single line (GitHub will create this automatically when you set the
+   custom domain in step 2).
+5. **Disable directory listings**: nothing to do — GitHub Pages doesn't
+   serve directory indexes.
+
+### Security posture in production
+
+- **HTTPS** — enforced by GitHub Pages once "Enforce HTTPS" is on. The
+  CSP also includes `upgrade-insecure-requests` as a belt-and-braces
+  measure against any accidental `http://` asset URL.
+- **Content-Security-Policy** — set via `<meta>` in `index.html`. Blocks
+  inline scripts and `eval()`, restricts asset origins to the small set
+  this site actually uses (Google Fonts, Bandsintown, YouTube IFrame
+  Player). If you add a new external service, you must also add its
+  origin to the relevant CSP directive or the browser will block it.
+- **Clickjacking** — `frame-ancestors 'none'` in the CSP prevents any
+  other site from embedding this one in an `<iframe>`.
+- **Referrer leakage** — `<meta name="referrer" content="strict-origin-when-cross-origin">`
+  hides the visited URL path/query from external links.
+- **XSS via Bandsintown** — all artist-controlled fields are rendered via
+  `textContent`/`createElement` (never `innerHTML`); event URLs are
+  validated with a `^https?://` regex before use.
+- **Video URL input** — only YouTube watch / shorts / `youtu.be/…` URLs
+  are accepted; everything else (incl. `javascript:`, `file:`, arbitrary
+  MP4) is rejected and shown as "URL not valid".
+
+### Pre-deploy checklist
+
+- [ ] `python3 server.py` was not pushed as part of any production
+      configuration; the repo is meant to be served as raw static files.
+- [ ] No secrets or `.env` files in the repo (none exist today).
+- [ ] All external `<script>` / `<link>` / `connect`/`fetch` targets are
+      already in the CSP whitelist in [index.html](index.html).
+- [ ] GitHub Pages → Settings → Pages → "Enforce HTTPS" is **on**.
+- [ ] Custom domain in GoDaddy DNS resolves and serves over HTTPS without
+      a certificate warning.
+
 ## File Structure
 
 ```

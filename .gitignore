@@ -4,3 +4,7 @@ Thumbs.db
 *.log
 *.asd
 .vscode/
+
+# Dev-only Python proxy server. NEVER deploy this to production.
+# Tracked locally only — see README.md → Deployment.
+server.py
