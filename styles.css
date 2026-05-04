@@ -1291,7 +1291,7 @@ body.room-mode #gif-container {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(360px, calc(100vw - 48px));
+    width: min(280px, calc(100vw - 48px));
     background: #dfdcd8;
     border: 1.5px solid #595147;
     border-radius: 3px;

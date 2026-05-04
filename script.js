@@ -2029,9 +2029,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Scrollbar hover info (desktop only — the scrollbar isn't really
     // discoverable as a hover target on touch and a toast there adds noise).
     const scrollThumb = document.getElementById('custom-scrollbar-thumb');
+    const scrollBar = document.getElementById('custom-scrollbar');
     if (scrollThumb && !isMobile) {
-        scrollThumb.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere to make more space'));
+        scrollThumb.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere in the website to make more space.'));
         scrollThumb.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+    if (scrollBar && !isMobile) {
+        scrollBar.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere in the website to make more space.'));
+        scrollBar.addEventListener('mouseleave', () => setHoverInfo(''));
     }
 });
 
