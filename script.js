@@ -1,17 +1,18 @@
 // Configuration: Add your GIFs and audio files here
 const samplerConfig = [
     {
-        gif: 'gifs/blue_dolphin.gif',     // Path to GIF
-        staticImg: 'gifs/blue_dolphin.png', // Path to static image (first frame)
+        gif: 'gifs/wolk-1.webp',           // Path to GIF
+        staticImg: 'gifs/wolk-1.png',     // Path to static image (first frame)
         audio: 'audio/sth-kick.wav',      // Path to audio file
-        width: 112,                        // Width in pixels
-        height: 112,                       // Height in pixels
+        width: 92,                         // Width in pixels (~11.2% of 819)
+        height: 67,                        // Height in pixels (~11.2% of 599)
         x: 20,                             // Initial X position (%)
         y: 50                              // Initial Y position (%)
     },
     {
-        gif: 'gifs/pink_dolphin.gif',     // Path to GIF
+        gif: 'gifs/pink_dolphin.webp',     // Path to GIF
         staticImg: 'gifs/pink_dolphin.png', // Path to static image (first frame)
+        alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
         audioList: [                       // Random sample picked on each trigger
             'audio/sweet-samples/samp1.wav',
             'audio/sweet-samples/samp2.wav',
@@ -28,8 +29,9 @@ const samplerConfig = [
         y: 20                              // Initial Y position (%)
     },
     {
-        gif: 'gifs/pink_dolphin.gif',     // Path to GIF
+        gif: 'gifs/pink_dolphin.webp',     // Path to GIF
         staticImg: 'gifs/pink_dolphin.png', // Path to static image (first frame)
+        alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
         audio: 'audio/sweet.wav',         // Path to audio file
         width: 112,                        // Width in pixels
         height: 112,                       // Height in pixels
@@ -37,8 +39,9 @@ const samplerConfig = [
         y: 70                              // Initial Y position (%)
     },
     {
-        gif: 'gifs/blue_dolphin.gif',     // Path to GIF
+        gif: 'gifs/blue_dolphin.webp',     // Path to GIF
         staticImg: 'gifs/blue_dolphin.png', // Path to static image (first frame)
+        alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
         audio: 'audio/so.wav',            // Path to audio file
         width: 112,                        // Width in pixels
         height: 112,                       // Height in pixels
@@ -46,17 +49,17 @@ const samplerConfig = [
         y: 40                              // Initial Y position (%)
     },
     {
-        gif: 'gifs/blue_dolphin.gif',     // Path to GIF
-        staticImg: 'gifs/blue_dolphin.png', // Path to static image (first frame)
+        gif: 'gifs/wolk-2.webp',           // Path to GIF
+        staticImg: 'gifs/wolk-2.png',     // Path to static image (first frame)
         audio: 'audio/sth-snare.wav',     // Path to audio file
-        width: 112,                        // Width in pixels
-        height: 112,                       // Height in pixels
+        width: 99,                         // Width in pixels (~11.2% of 888)
+        height: 75,                        // Height in pixels (~11.2% of 669)
         x: 70,                             // Initial X position (%)
         y: 60                              // Initial Y position (%)
     },
     // hidden for now — restore when ready:
     // {
-    //     gif: 'gifs/blue_dolphin.gif',
+    //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
     //     audio: 'audio/dans1.wav',
     //     width: 112,
@@ -65,7 +68,7 @@ const samplerConfig = [
     //     y: 25
     // },
     // {
-    //     gif: 'gifs/blue_dolphin.gif',
+    //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
     //     audio: 'audio/dans2.wav',
     //     width: 112,
@@ -74,7 +77,7 @@ const samplerConfig = [
     //     y: 45
     // },
     // {
-    //     gif: 'gifs/blue_dolphin.gif',
+    //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
     //     audio: 'audio/dans3.wav',
     //     width: 112,
@@ -1258,8 +1261,16 @@ class GifSampler {
         placeholder.style.objectFit = 'contain';
         placeholder.style.pointerEvents = 'none';
         placeholder.style.display = 'block';
+        placeholder.style.opacity = '1';
+        // Place placeholder above the animated img so it covers it until activated.
+        placeholder.style.zIndex = '2';
+        placeholder.style.transition = 'opacity 0s';
 
-        // Create animated GIF image (hidden by default)
+        // Create animated GIF image. We mount it but keep it display:none so
+        // it doesn't animate in the background. On every activation we use a
+        // ping-pong of two <img> elements + img.decode() to guarantee a fresh
+        // frame-0 restart with the decode completed BEFORE we show it (this
+        // eliminates the visible blank-frame flash and the rapid-re-tap race).
         const animatedImg = document.createElement('img');
         animatedImg.src = config.gif;
         animatedImg.alt = `Sampler ${index + 1}`;
@@ -1272,12 +1283,36 @@ class GifSampler {
         animatedImg.style.objectFit = 'contain';
         animatedImg.style.pointerEvents = 'none';
         animatedImg.style.display = 'none';
+        animatedImg.style.zIndex = '1';
 
         gifDiv.appendChild(placeholder);
         gifDiv.appendChild(animatedImg);
         const gifIndex = index;
-        gifDiv.addEventListener('mouseenter', () => setHoverInfo(`Click me or press (${this.keyLabels[gifIndex]}). Drag me to move me to a new spot.`));
-        gifDiv.addEventListener('mouseleave', () => setHoverInfo(''));
+        const hoverMsg = `Click me or press (${this.keyLabels[gifIndex]}). Drag me to move me to a new spot.`;
+        // Hover info AND visual hover effect are alpha-aware: both only
+        // activate when the cursor is over a non-transparent pixel of the gif.
+        // The .solid-hover class drives the CSS scale/cursor; setHoverInfo
+        // drives the bottom-bar info text. Kept in sync via one mousemove.
+        let _hoverActive = false;
+        gifDiv.addEventListener('mousemove', (e) => {
+            const onSolid = this.isPointOnGif(gifData, e.clientX, e.clientY);
+            if (onSolid && !_hoverActive) {
+                _hoverActive = true;
+                gifDiv.classList.add('solid-hover');
+                setHoverInfo(hoverMsg);
+            } else if (!onSolid && _hoverActive) {
+                _hoverActive = false;
+                gifDiv.classList.remove('solid-hover');
+                setHoverInfo('');
+            }
+        });
+        gifDiv.addEventListener('mouseleave', () => {
+            if (_hoverActive) {
+                _hoverActive = false;
+                gifDiv.classList.remove('solid-hover');
+                setHoverInfo('');
+            }
+        });
         this.container.appendChild(gifDiv);
 
         // Build audio pool: either a single source or a list of randomized samples
@@ -1329,17 +1364,30 @@ class GifSampler {
             hideOnAudioEnd: null  // Stores the ended listener function for cleanup
         };
 
-        // Build alpha mask from static image once it loads (one-time cost)
+        // Build alpha mask from a dedicated alpha image when provided (config.alphaImg),
+        // otherwise fall back to the static placeholder PNG.
+        // Using a separate mask image lets us:
+        //   - share one mask across multiple gif variants (e.g. blue/pink dolphin)
+        //   - opt in to mobile alpha hit-detection (see isPointOnGif)
+        // NOTE: do NOT set crossOrigin on same-origin images. Setting it forces
+        // a CORS preflight that some local dev servers don't handle, which
+        // taints the canvas and silently breaks getImageData — falling back
+        // to a generous bounding-box hit area.
+        const maskImg = config.alphaImg ? new Image() : placeholder;
+        if (config.alphaImg) {
+            maskImg.src = config.alphaImg;
+        }
+        gifData.hasExplicitAlpha = !!config.alphaImg;
         const buildAlphaMask = () => {
             try {
-                const w = placeholder.naturalWidth;
-                const h = placeholder.naturalHeight;
+                const w = maskImg.naturalWidth;
+                const h = maskImg.naturalHeight;
                 if (!w || !h) return;
                 const c = document.createElement('canvas');
                 c.width = w;
                 c.height = h;
                 const cctx = c.getContext('2d');
-                cctx.drawImage(placeholder, 0, 0);
+                cctx.drawImage(maskImg, 0, 0);
                 const data = cctx.getImageData(0, 0, w, h).data;
                 const mask = new Uint8Array(w * h);
                 for (let i = 0, j = 3; i < mask.length; i++, j += 4) {
@@ -1352,10 +1400,10 @@ class GifSampler {
                 // CORS or other failure -> fallback inset hit area is used
             }
         };
-        if (placeholder.complete && placeholder.naturalWidth > 0) {
+        if (maskImg.complete && maskImg.naturalWidth > 0) {
             buildAlphaMask();
         } else {
-            placeholder.addEventListener('load', buildAlphaMask, { once: true });
+            maskImg.addEventListener('load', buildAlphaMask, { once: true });
         }
 
         this.gifs.push(gifData);
@@ -1370,9 +1418,11 @@ class GifSampler {
         const localY = clientY - rect.top;
         if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height) return false;
 
-        // On mobile, skip pixel-perfect alpha detection. GIFs are small and finger
-        // contact areas are large — alpha rejection causes too many misses.
-        if (isMobile) return true;
+        // On mobile, skip pixel-perfect alpha detection UNLESS the gif config
+        // provides an explicit alpha mask (config.alphaImg). Without an explicit
+        // mask, finger contact areas are too imprecise and alpha rejection
+        // causes too many missed taps.
+        if (isMobile && !gifData.hasExplicitAlpha) return true;
 
         if (gifData.alphaMask) {
             const imgW = gifData.alphaWidth;
@@ -1388,12 +1438,30 @@ class GifSampler {
             if (inX < 0 || inY < 0 || inX >= renderedW || inY >= renderedH) return false;
             const px = Math.floor((inX / renderedW) * imgW);
             const py = Math.floor((inY / renderedH) * imgH);
-            return gifData.alphaMask[py * imgW + px] === 1;
+            // Direct hit on a solid pixel
+            if (gifData.alphaMask[py * imgW + px] === 1) return true;
+            // Forgiveness: on mobile fingers are imprecise, so accept a hit if
+            // any pixel within ~8 source-pixels of the tap is solid. Cheap to
+            // sample because the mask is a flat Uint8Array.
+            if (isMobile) {
+                const r = 8;
+                const x0 = Math.max(0, px - r), x1 = Math.min(imgW - 1, px + r);
+                const y0 = Math.max(0, py - r), y1 = Math.min(imgH - 1, py + r);
+                for (let yy = y0; yy <= y1; yy += 2) {
+                    const rowBase = yy * imgW;
+                    for (let xx = x0; xx <= x1; xx += 2) {
+                        if (gifData.alphaMask[rowBase + xx] === 1) return true;
+                    }
+                }
+            }
+            return false;
         }
 
-        // Fallback: 15% inset hit area
-        const insetX = rect.width * 0.15;
-        const insetY = rect.height * 0.15;
+        // Fail-closed fallback: only used if the alpha mask never built
+        // (e.g. CORS-tainted canvas). A tight 5% inset still beats the full
+        // bounding box and matches user expectation for shape-aware hits.
+        const insetX = rect.width * 0.05;
+        const insetY = rect.height * 0.05;
         return localX >= insetX && localX <= rect.width - insetX
             && localY >= insetY && localY <= rect.height - insetY;
     }
@@ -1575,21 +1643,55 @@ class GifSampler {
 
     // Unified GIF activation: show animation, play audio, auto-hide when audio ends
     activateGif(gifData) {
-        // Show animated GIF.
-        // If the gif is already showing (rapid re-tap), skip the src reset:
-        // re-decoding the GIF on every tap caused a visible "frozen frame"
-        // stutter because the audio (Web Audio buffer) starts in <1ms while
-        // the image decode takes 30–150ms. Letting the existing animation keep
-        // running while the new audio fires feels much more responsive.
-        const wasShowing = gifData.animatedImg.style.display === 'block';
-        gifData.placeholder.style.display = 'none';
-        gifData.animatedImg.style.display = 'block';
+        // Frame-0 restart via two-<img> ping-pong with img.decode():
+        //   1. Build a brand-new <img> off-DOM with a unique cache-fragment URL.
+        //      The fragment is ignored by the HTTP cache, but forces the
+        //      browser to start a fresh decode (no in-flight dedup with the
+        //      previous activation — this was what made rapid re-taps fail).
+        //   2. Await img.decode(). When it resolves, frame 0 is ready.
+        //   3. Swap: remove the old <img>, insert the new one, hide placeholder.
+        // The decode is fast (GIF served from cache) so the perceived delay is
+        // typically <16ms, but the audio fires immediately so even if the
+        // visual lags by a frame the response feels instant.
+        const baseSrc = gifData.gifSrc || gifData.animatedImg.src.split('#')[0];
+        gifData.gifSrc = baseSrc;
+        gifData._activations = (gifData._activations || 0) + 1;
+        const activation = gifData._activations;
 
-        if (!wasShowing) {
-            // First-tap (or post-end) restart: reload to play from frame 0.
-            const src = gifData.animatedImg.src;
-            gifData.animatedImg.src = '';
-            gifData.animatedImg.src = src;
+        const fresh = document.createElement('img');
+        fresh.draggable = false;
+        fresh.alt = gifData.animatedImg.alt;
+        fresh.style.position = 'absolute';
+        fresh.style.top = '0';
+        fresh.style.left = '0';
+        fresh.style.width = '100%';
+        fresh.style.height = '100%';
+        fresh.style.objectFit = 'contain';
+        fresh.style.pointerEvents = 'none';
+        fresh.style.zIndex = '1';
+        fresh.style.display = 'block';
+        fresh.src = baseSrc + '#' + activation;
+
+        const swap = () => {
+            // If a newer activation already happened, abandon this one.
+            if (gifData._activations !== activation) return;
+            const oldImg = gifData.animatedImg;
+            oldImg.parentNode.insertBefore(fresh, oldImg);
+            oldImg.remove();
+            gifData.animatedImg = fresh;
+            gifData.placeholder.style.opacity = '0';
+        };
+        // decode() may reject on some browsers for animated GIFs; in that case
+        // fall back to onload, then to a synchronous swap as last resort.
+        if (typeof fresh.decode === 'function') {
+            fresh.decode().then(swap).catch(() => {
+                if (fresh.complete) swap();
+                else fresh.addEventListener('load', swap, { once: true });
+            });
+        } else if (fresh.complete) {
+            swap();
+        } else {
+            fresh.addEventListener('load', swap, { once: true });
         }
         
         // Pick audio index: random from pool if multiple, else 0
@@ -1610,10 +1712,13 @@ class GifSampler {
             gifData.activeAudio = null;
         }
 
-        // Callback that hides the gif once playback ends
+        // Callback that hides the gif once playback ends.
+        // Hide the animated <img> entirely (display:none) so it stops
+        // animating in the background and stops leaking through the
+        // placeholder's transparent regions.
         const hideOnEnd = () => {
-            gifData.placeholder.style.display = 'block';
-            gifData.animatedImg.style.display = 'none';
+            gifData.placeholder.style.opacity = '1';
+            if (gifData.animatedImg) gifData.animatedImg.style.display = 'none';
         };
         gifData.hideOnAudioEnd = hideOnEnd;
 

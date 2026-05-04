@@ -422,7 +422,9 @@ body.room-mode #gif-container {
 /* Individual GIF Items */
 .gif-item {
     position: absolute;
-    cursor: grab;
+    /* Default cursor is the page cursor; we only switch to grab when the
+       pointer is over a non-transparent pixel (toggled by JS via .solid-hover). */
+    cursor: default;
     pointer-events: auto;
     user-select: none;
     -webkit-user-select: none;
@@ -433,7 +435,11 @@ body.room-mode #gif-container {
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
 }
 
-.gif-item:active {
+.gif-item.solid-hover {
+    cursor: grab;
+}
+
+.gif-item.solid-hover:active {
     cursor: grabbing;
 }
 
@@ -445,11 +451,12 @@ body.room-mode #gif-container {
     pointer-events: none;
 }
 
-.gif-item:hover {
+/* Hover/active visual feedback only when over a solid pixel */
+.gif-item.solid-hover {
     transform: scale(1.05);
 }
 
-.gif-item:active {
+.gif-item.solid-hover:active {
     transform: scale(0.98);
     transition: transform 0.05s ease;
 }
