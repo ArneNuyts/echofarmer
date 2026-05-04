@@ -1078,6 +1078,7 @@ body.room-mode #gif-container {
     flex-shrink: 0;
     letter-spacing: 0.08em;
     transition: background 0.1s;
+    touch-action: none;
 }
 .video-time:hover,
 .video-time.dragging {

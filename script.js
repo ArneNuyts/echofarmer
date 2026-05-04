@@ -2906,6 +2906,8 @@ function createVideoPad() {
     }, { passive: true });
     timeLabel.addEventListener('touchmove', (e) => {
         if (timeDragY === null) return;
+        // Block page scroll while scrubbing the timecode on mobile.
+        if (e.cancelable) e.preventDefault();
         const rate = e.touches.length > 1 ? 0.1 : 1; // two-finger touch = fine mode
         const delta = (timeDragY - e.touches[0].clientY) * rate;
         const target = timeDragStart + delta;
