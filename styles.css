@@ -968,7 +968,7 @@ body.room-mode #gif-container {
 .ph-mini-scrub {
     display: block;
     margin-top: 3px;
-    margin-left: 10px;
+    margin-left: 15px;
     margin-bottom: 2px;
     width: 44px;
     height: 3px;
@@ -990,7 +990,7 @@ body.room-mode #gif-container {
 .ph-mini-tc {
     display: block;
     margin-top: 3px;
-    margin-left: 10px;
+    margin-left: 15px;
     width: fit-content;
     font-size: 7px;
     font-weight: 700;
