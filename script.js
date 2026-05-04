@@ -720,6 +720,22 @@ function scheduleGridRedraw() {
     });
 }
 window.addEventListener('resize', scheduleGridRedraw);
+// iOS sometimes fires `resize` BEFORE the new viewport dimensions are
+// reported, leading to a jumbled/oversized layout that sticks even after
+// rotating back. `orientationchange` fires once the new metrics are stable;
+// re-running every layout-time callback here clears the bad state.
+window.addEventListener('orientationchange', () => {
+    // Two passes: one immediately (for browsers that have updated metrics
+    // synchronously) and one a beat later (for iOS Safari where innerWidth
+    // updates asynchronously). The redraws are idempotent.
+    const refresh = () => {
+        scheduleGridRedraw();
+        if (_syncFloorHeight) _syncFloorHeight();
+        if (_scrollbarUpdate) _scrollbarUpdate();
+    };
+    refresh();
+    setTimeout(refresh, 250);
+});
 
 // Initialize on load
 initializeGrid();
@@ -799,8 +815,12 @@ window.addEventListener('load', () => {
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
         if (!_dragging) return;
+        // Block page scroll while dragging the welcome modal on mobile.
+        // Must register the listener as { passive: false } for preventDefault
+        // to take effect.
+        if (e.cancelable) e.preventDefault();
         onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
+    }, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 })();
 if (document.fonts && document.fonts.ready) {
@@ -1890,6 +1910,29 @@ function setHoverInfo(text) {
 document.addEventListener('DOMContentLoaded', () => {
     new GifSampler(samplerConfig);
     setupCustomScrollbar();
+
+    // Mobile: tap empty space (anywhere not on a character / video pad /
+    // controls / floor section / info window itself) dismisses the toast
+    // and the welcome modal. Lets users clear visual noise on demand
+    // instead of waiting for the auto-timeout.
+    if (isMobile) {
+        const INTERACTIVE_SEL =
+            '.gif-item, .video-pad, #controls-bar, #welcome-modal, #info-toast,' +
+            ' .floor-section, #right-panel, #custom-scrollbar,' +
+            ' a, button, input, textarea, select, iframe';
+        document.addEventListener('touchstart', (e) => {
+            if (e.target && e.target.closest && e.target.closest(INTERACTIVE_SEL)) return;
+            // Dismiss toast (immediate, no fade-out delay needed).
+            const toast = document.getElementById('info-toast');
+            if (toast) toast.classList.remove('visible');
+            // Dismiss welcome modal (matches the close-button behaviour).
+            const modal = document.getElementById('welcome-modal');
+            if (modal && !modal.hidden && modal.classList.contains('visible')) {
+                modal.classList.remove('visible');
+                setTimeout(() => { modal.hidden = true; }, 200);
+            }
+        }, { passive: true });
+    }
 
     // Track mouse for info-float positioning
     document.addEventListener('mousemove', (e) => {
@@ -3028,9 +3071,15 @@ function createVideoPad() {
         _frT = _padContainer.getBoundingClientRect();
         dragOffX = e.touches[0].clientX - r.left; dragOffY = e.touches[0].clientY - r.top;
     }, { passive: true });
-    const onTouchMovePad = (e) => { if (!dragging) return; pad.style.left = (e.touches[0].clientX - _frT.left - dragOffX) + 'px'; pad.style.top = (e.touches[0].clientY - _frT.top - dragOffY) + 'px'; };
+    const onTouchMovePad = (e) => {
+        if (!dragging) return;
+        // Block page scroll while dragging the video pad on mobile.
+        if (e.cancelable) e.preventDefault();
+        pad.style.left = (e.touches[0].clientX - _frT.left - dragOffX) + 'px';
+        pad.style.top = (e.touches[0].clientY - _frT.top - dragOffY) + 'px';
+    };
     const onTouchEndPad = () => { dragging = false; };
-    document.addEventListener('touchmove', onTouchMovePad, { passive: true });
+    document.addEventListener('touchmove', onTouchMovePad, { passive: false });
     document.addEventListener('touchend', onTouchEndPad);
 
     // Clean up drag listeners when pad is removed

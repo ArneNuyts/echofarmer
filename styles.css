@@ -4,6 +4,14 @@
     box-sizing: border-box;
 }
 
+html {
+    /* iOS Safari aggressively boosts text size when rotating to landscape
+       and doesn't reset when rotating back. Pin to 100% so font-size
+       declarations are honoured exactly in both orientations. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     min-height: 100vh;
     overflow: hidden;
