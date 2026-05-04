@@ -755,6 +755,7 @@ body.room-mode #gif-container {
 }
 .contact-link-item {
     color: #4c453d;
+    line-height: 1.6;
 }
 .contact-link {
     color: #1b1916;
@@ -1281,6 +1282,72 @@ body.room-mode #gif-container {
 }
 #info-toast.visible { opacity: 1; }
 
+/* ── Welcome modal ─────────────────────────────────────────────────────────── */
+/* Auto-shown 10s after page load (once per session). Same look-and-feel as the
+   info-float boxes (light box, dark border, drop-shadow). Closing icon top-right
+   matches the video sampler close button. */
+.welcome-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(360px, calc(100vw - 48px));
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    padding: 8px 12px;
+    z-index: 200;
+    font-family: "Geist", sans-serif;
+    color: #1b1916;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: move;
+    user-select: none;
+}
+.welcome-modal.visible { opacity: 1; }
+.welcome-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+    color: #1b1916;
+    margin-bottom: 6px;
+}
+.welcome-body {
+    font-size: 13px;
+    font-weight: 450;
+    line-height: 1.6;
+    text-align: left;
+    color: #1b1916;
+}
+.welcome-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.welcome-close img {
+    width: 19.5px;
+    height: 19.5px;
+    transform: rotate(45deg);
+    pointer-events: none;
+    display: block;
+    transition: filter 0.15s;
+}
+.welcome-close:hover img {
+    /* #4c453d × 1.64 ≈ #7c7164 */
+    filter: brightness(1.64);
+}
+
 /* Never show the cursor-follow info float on touch-primary devices */
 @media (hover: none) {
     #info-float { display: none !important; }
@@ -1336,7 +1403,7 @@ body.room-mode #gif-container {
         height: auto;
     }
     #drive-knob .knob-dial img {
-        transform: scale(0.84);
+        transform: scale(0.87);
         transform-origin: center;
     }
     /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as

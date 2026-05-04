@@ -12,6 +12,13 @@
 </head>
 <body class="room-mode open-bottom-mode">
     <div id="info-float"></div>
+    <div id="welcome-modal" class="welcome-modal" hidden>
+        <button id="welcome-close" class="welcome-close" aria-label="Close">
+            <img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Close">
+        </button>
+        <div class="welcome-title">Welcome!</div>
+        <div class="welcome-body">As new singles drop from Tiny Big Much, new samples from those tracks get uploaded to this website. The sample pack will be complete when the entire mixtape is released. If you feel confused about what is happening on this website, hover over the elements to get more information.</div>
+    </div>
     <div id="right-panel"></div>
     <div id="controls-bar" class="controls-bar">
         <button id="lock-button" class="icon-button lock-button" aria-label="Lock"><img src="icons/SVG-STATES/NORMAL/lock-open-yellow.svg" alt="Lock"></button>
@@ -74,8 +81,10 @@
                 <div class="floor-part floor-links">
                     <h3 class="floor-heading">Links</h3>
                     <div class="links-section">
-                        <div class="contact-link-item links-section-sep"><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">This Here Now (Junior)</a></div>
-                        <div class="contact-link-item links-section-sep"><strong>Booking BE &amp; NL:</strong> <a href="mailto:ilja@greenhousetalent.be" class="contact-link">Greenhouse Talent (Ilja)</a></div>
+                        <div class="contact-link-item">
+                            <div><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">This Here Now (Junior)</a></div>
+                            <div><strong>Booking BE &amp; NL:</strong> <a href="mailto:ilja@greenhousetalent.be" class="contact-link">Greenhouse Talent (Ilja)</a></div>
+                        </div>
                         <a href="#" class="contact-link mailing-list-link links-section-sep">Subscribe to my mailing list</a>
                         <div class="social-group links-section-sep">
                             <a class="icon-link" href="https://www.instagram.com/echofarmer_/" target="_blank" aria-label="Instagram"><img src="icons/SVG-STATES/NORMAL/instagram.svg" alt="Instagram"></a>

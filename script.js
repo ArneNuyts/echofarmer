@@ -730,6 +730,75 @@ window.addEventListener('load', () => {
     if (_syncFloorHeight) _syncFloorHeight();
     if (_scrollbarUpdate) _scrollbarUpdate();
 });
+
+// Welcome modal: pop up 10s after load. Closing dismisses for the rest of the
+// session (a refresh shows it again — no localStorage). Shows regardless of
+// the info-toggle state, since it's not a hover hint.
+(function setupWelcomeModal() {
+    const modal = document.getElementById('welcome-modal');
+    if (!modal) return;
+    const closeBtn = document.getElementById('welcome-close');
+    const closeImg = closeBtn && closeBtn.querySelector('img');
+    let dismissed = false;
+    const show = () => {
+        if (dismissed) return;
+        modal.hidden = false;
+        // Centre the modal using explicit left/top (removes the CSS translate so
+        // drag repositioning works correctly with simple left/top updates).
+        const mw = modal.offsetWidth || 360;
+        const mh = modal.offsetHeight || 80;
+        modal.style.transform = 'none';
+        modal.style.left = Math.round((window.innerWidth  - mw) / 2) + 'px';
+        modal.style.top  = Math.round((window.innerHeight - mh) / 2) + 'px';
+        // Force layout flush so the opacity transition runs.
+        void modal.offsetWidth;
+        modal.classList.add('visible');
+    };
+    const hide = () => {
+        dismissed = true;
+        modal.classList.remove('visible');
+        setTimeout(() => { modal.hidden = true; }, 200);
+    };
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hide);
+        closeBtn.addEventListener('mouseenter', () => setHoverInfo('Close the welcome window.'));
+        closeBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+    setTimeout(show, 10000);
+
+    // ── Drag (mouse + touch) ──
+    let _dragging = false;
+    let _dragOffX = 0, _dragOffY = 0;
+    const onDragStart = (clientX, clientY) => {
+        if (dismissed) return;
+        const r = modal.getBoundingClientRect();
+        _dragOffX = clientX - r.left;
+        _dragOffY = clientY - r.top;
+        _dragging = true;
+    };
+    const onDragMove = (clientX, clientY) => {
+        if (!_dragging) return;
+        modal.style.left = (clientX - _dragOffX) + 'px';
+        modal.style.top  = (clientY - _dragOffY) + 'px';
+    };
+    const onDragEnd = () => { _dragging = false; };
+    modal.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button')) return;
+        onDragStart(e.clientX, e.clientY);
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => onDragMove(e.clientX, e.clientY));
+    document.addEventListener('mouseup', onDragEnd);
+    modal.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button')) return;
+        onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+        if (!_dragging) return;
+        onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    document.addEventListener('touchend', onDragEnd);
+})();
 if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
         scheduleGridRedraw();
