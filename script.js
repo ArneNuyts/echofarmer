@@ -2544,10 +2544,10 @@ function createVideoPad() {
         stagePlaceholder.innerHTML =
             `<div class="ph-list">` +
             `<span class="ph-num">1.</span><span class="ph-text">Paste a YouTube URL above.</span>` +
-            `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. That key can now launch the video.</span>` +
-            `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point either...</span>` +
-            `<span class="ph-num"></span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
-            `<span class="ph-num"></span><span class="ph-text ph-sub">...or drag up or down in the timecode box<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
+            `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. <br> That key can now launch the video.</span>` +
+            `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point, either...</span>` +
+            `<span class="ph-num">•</span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
+            `<span class="ph-num">•</span><span class="ph-text ph-sub">...or drag the timecode up or down<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
             `</div>`;
     }
     stage.appendChild(stagePlaceholder);
