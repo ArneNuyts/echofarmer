@@ -1347,17 +1347,14 @@ body.room-mode #gif-container {
     font-family: "Geist", sans-serif;
     color: #1b1916;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
-    opacity: 0;
-    /* No fade-in — appear instantly. Only the hover scale animates,
-       limited to the transform property so opacity/positioning changes
-       don't tween. */
-    transition: transform 0.2s ease;
     cursor: move;
     user-select: none;
 }
 /* Once JS has set explicit left/top (after show()), drop the centring
-   translate so CSS hover scale composes cleanly without fighting it. */
-.welcome-modal.positioned { transform: none; }
+   translate. The transition is declared here (not on the base rule) so
+   it is only active after initial placement — appear is instant, hover
+   scale still animates. */
+.welcome-modal.positioned { transform: none; transition: transform 0.2s ease; }
 .welcome-modal.visible { opacity: 1; }
 /* Hover scale-up matches the gif items. */
 .welcome-modal.positioned:hover { transform: scale(1.05); }
