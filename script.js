@@ -671,14 +671,23 @@ function setupRoomScrollOpen() {
         }, { passive: false });
 
         // Forward touch-scroll from gif container to the scroller.
-        // Gif elements call e.stopPropagation() on their touchstart so only
-        // touches in empty areas of the container reach these handlers.
+        // Skip touches that started on (or are over) a draggable element —
+        // otherwise dragging a character or video pad also scrolls the room.
         let _gcTouchY = null;
+        const _gcSkipSel = '.gif-item, .video-pad';
         gifContainer.addEventListener('touchstart', (e) => {
+            if (e.target && e.target.closest && e.target.closest(_gcSkipSel)) {
+                _gcTouchY = null;
+                return;
+            }
             _gcTouchY = e.touches[0].clientY;
         }, { passive: true });
         gifContainer.addEventListener('touchmove', (e) => {
             if (_gcTouchY === null) return;
+            if (e.target && e.target.closest && e.target.closest(_gcSkipSel)) {
+                _gcTouchY = null;
+                return;
+            }
             const dy = _gcTouchY - e.touches[0].clientY;
             _gcTouchY = e.touches[0].clientY;
             scroller.scrollTop += dy;
@@ -689,20 +698,59 @@ function setupRoomScrollOpen() {
     // Forward touch-scroll from the floor section to the scroller.
     // The floor section sits outside #table-scroll so native touch scroll
     // doesn't reach the scroller when the finger is over the floor.
+    // We add iOS-style inertia (velocity tracking + decay on touchend) so
+    // letting go feels like the in-room native scroll, not a hard stop.
     if (floorSection) {
         let _fsTouchY = null;
+        let _fsLastY = 0;
+        let _fsLastT = 0;
+        let _fsVel = 0; // px / ms
+        let _fsRaf = null;
+        const cancelMomentum = () => {
+            if (_fsRaf !== null) { cancelAnimationFrame(_fsRaf); _fsRaf = null; }
+        };
+        const stepMomentum = (last) => {
+            const now = performance.now();
+            const dt = Math.min(now - last, 32);
+            // Exponential decay: lose ~5%/ms (half-life ~14ms) — tuned to feel
+            // close to iOS native momentum on a long flick.
+            const decay = Math.pow(0.95, dt);
+            _fsVel *= decay;
+            scroller.scrollTop += _fsVel * dt;
+            if (Math.abs(_fsVel) < 0.02) { _fsRaf = null; return; }
+            _fsRaf = requestAnimationFrame(() => stepMomentum(now));
+        };
         floorSection.addEventListener('touchstart', (e) => {
+            cancelMomentum();
             // Let links/buttons handle their own touch
-            if (e.target.closest('a, button, input')) return;
+            if (e.target.closest('a, button, input')) { _fsTouchY = null; return; }
             _fsTouchY = e.touches[0].clientY;
+            _fsLastY = _fsTouchY;
+            _fsLastT = performance.now();
+            _fsVel = 0;
         }, { passive: true });
         floorSection.addEventListener('touchmove', (e) => {
             if (_fsTouchY === null) return;
-            const dy = _fsTouchY - e.touches[0].clientY;
-            _fsTouchY = e.touches[0].clientY;
+            const y = e.touches[0].clientY;
+            const now = performance.now();
+            const dy = _fsTouchY - y;
+            _fsTouchY = y;
             scroller.scrollTop += dy;
+            // Track instantaneous velocity (low-pass blend so a single
+            // jittery sample doesn't dominate).
+            const dt = Math.max(1, now - _fsLastT);
+            const inst = (_fsLastY - y) / dt;
+            _fsVel = _fsVel * 0.6 + inst * 0.4;
+            _fsLastY = y;
+            _fsLastT = now;
         }, { passive: true });
-        floorSection.addEventListener('touchend', () => { _fsTouchY = null; }, { passive: true });
+        floorSection.addEventListener('touchend', () => {
+            _fsTouchY = null;
+            // Kick off momentum if the flick had any meaningful velocity.
+            if (Math.abs(_fsVel) > 0.05) {
+                _fsRaf = requestAnimationFrame(() => stepMomentum(performance.now()));
+            }
+        }, { passive: true });
     }
 
     update();
@@ -773,6 +821,12 @@ window.addEventListener('load', () => {
         // Force layout flush so the opacity transition runs.
         void modal.offsetWidth;
         modal.classList.add('visible');
+        // Enable hover-scale transition AFTER initial placement so the
+        // browser doesn't tween the translate(-50%,-50%) -> none transform
+        // change (which would look like a swoop-in from the top-left).
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => modal.classList.add('with-transition'));
+        });
     };
     const hide = () => {
         dismissed = true;
@@ -781,8 +835,12 @@ window.addEventListener('load', () => {
     };
     if (closeBtn) {
         closeBtn.addEventListener('click', hide);
-        closeBtn.addEventListener('mouseenter', () => setHoverInfo('Close the welcome window.'));
-        closeBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+        // Desktop only: hover hint. On mobile the mouseenter fires on tap and
+        // pops a redundant toast right as the user is dismissing the modal.
+        if (!isMobile) {
+            closeBtn.addEventListener('mouseenter', () => setHoverInfo('Close the welcome window.'));
+            closeBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+        }
     }
     setTimeout(show, 10000);
 
@@ -1138,12 +1196,18 @@ class GifSampler {
     }
 
     setupWindowResizeListener() {
-        // Track previous frame size to detect shrinking vs growing
-        let lastWidth = this.getBoundsHost().clientWidth;
-        let lastHeight = this.getBoundsHost().clientHeight;
-
         // Debounce window resize for cheap, jitter-free updates
         let resizeRaf = null;
+        const runConstrain = () => {
+            // Always constrain (idempotent when already in-bounds). Prevents
+            // gifs from ending up off-screen after orientation flips, where
+            // iOS may report intermediate dimensions that aren't strictly
+            // shrinking on both axes but still cut off some characters.
+            this.gifs.forEach(gifData => {
+                this.constrainElementToBounds(gifData.element);
+            });
+            this.nudgeApart();
+        };
         window.addEventListener('resize', () => {
             // Hover hit-test rect cache must be invalidated immediately on
             // any layout change so the next mousemove re-measures.
@@ -1151,25 +1215,18 @@ class GifSampler {
             if (resizeRaf !== null) return;
             resizeRaf = requestAnimationFrame(() => {
                 resizeRaf = null;
-                const host = this.getBoundsHost();
-                const newWidth = host.clientWidth;
-                const newHeight = host.clientHeight;
-                const isShrinking = newWidth < lastWidth || newHeight < lastHeight;
-                lastWidth = newWidth;
-                lastHeight = newHeight;
-
-                // Only react when shrinking - walls push GIFs inward.
-                // When growing, GIFs keep their absolute position.
-                if (isShrinking) {
-                    this.gifs.forEach(gifData => {
-                        this.constrainElementToBounds(gifData.element);
-                    });
-                    this.nudgeApart();
-                }
+                runConstrain();
             });
         });
+        // iOS Safari: the resize fired during orientationchange often arrives
+        // before the new viewport metrics settle. Re-run a beat later so any
+        // characters orphaned outside the new bounds get pulled back in.
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => { this._invalidateGifRects(); runConstrain(); }, 300);
+            setTimeout(() => { this._invalidateGifRects(); runConstrain(); }, 700);
+        });
 
-        // Any scroll changes element viewport position \u2014 invalidate hit-test
+        // Any scroll changes element viewport position — invalidate hit-test
         // rects passively (no layout work needed here).
         const onScroll = () => this._invalidateGifRects();
         window.addEventListener('scroll', onScroll, { passive: true });

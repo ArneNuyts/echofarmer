@@ -1320,7 +1320,11 @@ body.room-mode #gif-container {
     font-weight: 450;
     color: #1b1916;
     line-height: 1.6;
-    white-space: nowrap;
+    /* Allow long hints to wrap onto two (or more) lines instead of being
+       clipped or overflowing the toast box. */
+    white-space: normal;
+    word-wrap: break-word;
+    text-align: center;
     opacity: 0;
     transition: opacity 0.15s;
     pointer-events: none;
@@ -1352,10 +1356,10 @@ body.room-mode #gif-container {
     user-select: none;
 }
 /* Once JS has set explicit left/top (after show()), drop the centring
-   translate. The transition is declared here (not on the base rule) so
-   it is only active after initial placement — appear is instant, hover
-   scale still animates. */
-.welcome-modal.positioned { transform: none; transition: transform 0.2s ease; }
+   translate. Transition is gated behind .with-transition (added a frame
+   later in JS) so the initial position swap doesn't animate. */
+.welcome-modal.positioned { transform: none; }
+.welcome-modal.positioned.with-transition { transition: transform 0.2s ease; }
 .welcome-modal.visible { opacity: 1; }
 /* Hover scale-up matches the gif items. */
 .welcome-modal.positioned:hover { transform: scale(1.05); }
