@@ -461,6 +461,18 @@ body.room-mode #gif-container {
     transition: transform 0.05s ease;
 }
 
+/* Trigger pulse: brief scale-up applied on every activation (click or key)
+   so the response feels instantaneous even on the rare frames where the
+   image swap hasn't repainted yet. Outranks .solid-hover via animation. */
+@keyframes gif-trigger-pulse {
+    0%   { transform: scale(1.05); }
+    40%  { transform: scale(1.18); }
+    100% { transform: scale(1.05); }
+}
+.gif-item.trigger-pulse {
+    animation: gif-trigger-pulse 180ms ease-out;
+}
+
 /*  section: 4-part grid layout. Sits BELOW the visible frame (top: 100%).
    In phase 2 of the room-open scroll, JS translateY's it up so its top edge
    stays glued to the bottom of the room (the near edge of the floor). */

@@ -1268,9 +1268,10 @@ class GifSampler {
 
         // Create animated GIF image. We mount it but keep it display:none so
         // it doesn't animate in the background. On every activation we use a
-        // ping-pong of two <img> elements + img.decode() to guarantee a fresh
-        // frame-0 restart with the decode completed BEFORE we show it (this
-        // eliminates the visible blank-frame flash and the rapid-re-tap race).
+        // pre-warmed pool of decoded <img> elements (see _prewarmNext below)
+        // so the visual swap is fully synchronous — no decode() promise to
+        // wait on, no first-frame flash. After each activation we kick off
+        // an async decode of a replacement so the next tap is again instant.
         const animatedImg = document.createElement('img');
         animatedImg.src = config.gif;
         animatedImg.alt = `Sampler ${index + 1}`;
@@ -1347,6 +1348,7 @@ class GifSampler {
             element: gifDiv,
             placeholder: placeholder,
             animatedImg: animatedImg,
+            gifSrc: config.gif,
             audio: audio,
             audioPool: audioPool,
             audioSources: audioSources, // parallel src strings for buffer cache lookup
@@ -1361,7 +1363,12 @@ class GifSampler {
             alphaMask: null,      // Uint8Array (1 byte per pixel, 0/1)
             alphaWidth: 0,
             alphaHeight: 0,
-            hideOnAudioEnd: null  // Stores the ended listener function for cleanup
+            hideOnAudioEnd: null, // Stores the ended listener function for cleanup
+            // Pre-warmed pool of decoded <img> elements ready to be inserted
+            // synchronously on the next activation. Refilled in the background
+            // after every tap by _prewarmNext().
+            prewarmedPool: [],
+            _activations: 0
         };
 
         // Build alpha mask from a dedicated alpha image when provided (config.alphaImg),
@@ -1408,6 +1415,42 @@ class GifSampler {
 
         this.gifs.push(gifData);
         this.attachEventListeners(gifData);
+        // Kick off pre-warm so the very first tap is also instant.
+        this._prewarmNext(gifData);
+        this._prewarmNext(gifData);
+    }
+
+    // Build a single decoded <img> off-DOM and push it onto the pre-warm pool.
+    // Each <img> uses a unique URL fragment so the browser doesn't dedup the
+    // decode with sibling pre-warmed copies (the bytes still come from cache).
+    _prewarmNext(gifData) {
+        if (gifData.prewarmedPool.length >= 3) return; // cap pool size
+        const baseSrc = gifData.gifSrc;
+        const tag = ++gifData._activations;
+        const img = document.createElement('img');
+        img.draggable = false;
+        img.alt = gifData.animatedImg.alt;
+        img.style.position = 'absolute';
+        img.style.top = '0';
+        img.style.left = '0';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.pointerEvents = 'none';
+        img.style.zIndex = '1';
+        img.style.display = 'none';
+        img.src = baseSrc + '#pw' + tag;
+        const ready = () => { gifData.prewarmedPool.push(img); };
+        if (typeof img.decode === 'function') {
+            img.decode().then(ready).catch(() => {
+                if (img.complete) ready();
+                else img.addEventListener('load', ready, { once: true });
+            });
+        } else if (img.complete) {
+            ready();
+        } else {
+            img.addEventListener('load', ready, { once: true });
+        }
     }
 
     // Check if a screen point hits a non-transparent pixel of the GIF.
@@ -1643,56 +1686,49 @@ class GifSampler {
 
     // Unified GIF activation: show animation, play audio, auto-hide when audio ends
     activateGif(gifData) {
-        // Frame-0 restart via two-<img> ping-pong with img.decode():
-        //   1. Build a brand-new <img> off-DOM with a unique cache-fragment URL.
-        //      The fragment is ignored by the HTTP cache, but forces the
-        //      browser to start a fresh decode (no in-flight dedup with the
-        //      previous activation — this was what made rapid re-taps fail).
-        //   2. Await img.decode(). When it resolves, frame 0 is ready.
-        //   3. Swap: remove the old <img>, insert the new one, hide placeholder.
-        // The decode is fast (GIF served from cache) so the perceived delay is
-        // typically <16ms, but the audio fires immediately so even if the
-        // visual lags by a frame the response feels instant.
-        const baseSrc = gifData.gifSrc || gifData.animatedImg.src.split('#')[0];
-        gifData.gifSrc = baseSrc;
-        gifData._activations = (gifData._activations || 0) + 1;
-        const activation = gifData._activations;
-
-        const fresh = document.createElement('img');
-        fresh.draggable = false;
-        fresh.alt = gifData.animatedImg.alt;
-        fresh.style.position = 'absolute';
-        fresh.style.top = '0';
-        fresh.style.left = '0';
-        fresh.style.width = '100%';
-        fresh.style.height = '100%';
-        fresh.style.objectFit = 'contain';
-        fresh.style.pointerEvents = 'none';
-        fresh.style.zIndex = '1';
+        // Synchronous frame-0 restart using a pre-warmed, already-decoded <img>:
+        //   - Pop one ready <img> off gifData.prewarmedPool (built ahead of
+        //     time by _prewarmNext). Its decode is already complete.
+        //   - Insert it into the DOM and hide the placeholder. Both happen
+        //     in this same tick, so first frame paints on the very next
+        //     compositor pass (no decode() promise wait).
+        //   - Kick off another _prewarmNext so the next tap is also instant.
+        // If the pool is empty (cold first tap on a slow device, or > N very
+        // rapid taps), fall back to the in-line synchronous swap.
+        const pre = gifData.prewarmedPool.shift();
+        const fresh = pre || (() => {
+            const img = document.createElement('img');
+            img.draggable = false;
+            img.alt = gifData.animatedImg.alt;
+            img.style.position = 'absolute';
+            img.style.top = '0';
+            img.style.left = '0';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.pointerEvents = 'none';
+            img.style.zIndex = '1';
+            img.src = gifData.gifSrc + '#fb' + (++gifData._activations);
+            return img;
+        })();
         fresh.style.display = 'block';
-        fresh.src = baseSrc + '#' + activation;
 
-        const swap = () => {
-            // If a newer activation already happened, abandon this one.
-            if (gifData._activations !== activation) return;
-            const oldImg = gifData.animatedImg;
-            oldImg.parentNode.insertBefore(fresh, oldImg);
-            oldImg.remove();
-            gifData.animatedImg = fresh;
-            gifData.placeholder.style.opacity = '0';
-        };
-        // decode() may reject on some browsers for animated GIFs; in that case
-        // fall back to onload, then to a synchronous swap as last resort.
-        if (typeof fresh.decode === 'function') {
-            fresh.decode().then(swap).catch(() => {
-                if (fresh.complete) swap();
-                else fresh.addEventListener('load', swap, { once: true });
-            });
-        } else if (fresh.complete) {
-            swap();
-        } else {
-            fresh.addEventListener('load', swap, { once: true });
-        }
+        const oldImg = gifData.animatedImg;
+        oldImg.parentNode.insertBefore(fresh, oldImg);
+        oldImg.remove();
+        gifData.animatedImg = fresh;
+        gifData.placeholder.style.opacity = '0';
+
+        // Visual trigger pulse: brief scale-up to confirm the activation,
+        // even on the rare frames where the image hasn't repainted yet.
+        const el = gifData.element;
+        el.classList.remove('trigger-pulse');
+        // Force reflow so re-adding the class restarts the animation.
+        void el.offsetWidth;
+        el.classList.add('trigger-pulse');
+
+        // Refill the pool in the background.
+        this._prewarmNext(gifData);
         
         // Pick audio index: random from pool if multiple, else 0
         const pool = gifData.audioPool || [gifData.audio];
