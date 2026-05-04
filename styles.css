@@ -1324,6 +1324,16 @@ body.room-mode #gif-container {
         width: 30px;
         height: 30px;
     }
+    /* Inset the absolutely-positioned knob dial by the .icon-button padding
+       (2px) so its rendered SVG matches the content-box sizing of the other
+       <img>-based icon buttons. Without this, width:100% on the dial would
+       resolve against the padding box and the knob would render ~4px larger
+       than its siblings. */
+    #drive-knob .knob-dial {
+        inset: 2px;
+        width: auto;
+        height: auto;
+    }
     /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as
        the actual font-size and scaling the element down to appear as the
        original 8px design size (16px × 0.5 = 8px). The input shrinks visually
