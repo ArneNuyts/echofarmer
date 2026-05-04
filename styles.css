@@ -1328,12 +1328,16 @@ body.room-mode #gif-container {
        while the other action icons (lock, plus, question) have built-in
        whitespace padding inside their viewBox. At the same container size,
        the knob therefore reads as visually larger. Compensate by scaling
-       the rendered dial down to the same visual footprint (~84%). */
+       the rendered IMG (not the dial — the dial's transform is reserved
+       for the JS-driven rotation) down to match the visual footprint. */
     #drive-knob .knob-dial {
         inset: 0;
         width: auto;
         height: auto;
+    }
+    #drive-knob .knob-dial img {
         transform: scale(0.84);
+        transform-origin: center;
     }
     /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as
        the actual font-size and scaling the element down to appear as the
