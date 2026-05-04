@@ -835,7 +835,7 @@ body.room-mode #gif-container {
     left: 50px;
     z-index: 1000;
     pointer-events: auto;
-    width: 240px;
+    width: 270px;
     background: #7c7164;
     border: 2px solid #595147;
     border-radius: 6px;

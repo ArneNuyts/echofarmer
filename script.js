@@ -2536,8 +2536,10 @@ function createVideoPad() {
             `<span class="ph-num">1.</span><span class="ph-text">Paste a YouTube URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Hold the video area to play. Release to stop.</span>` +
             `<span class="ph-num">3.</span><span class="ph-text">Set start point: drag the timeline left\u2009/\u2009right<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
-            `</div>` +
-            `<div class="ph-note">iOS limits video playback to one sound at a time, and disables the volume fader.</div>`;
+            `</div>`;
+        // iOS limitations are shown once as a longer-lived toast when the
+        // pad opens, instead of cluttering the in-stage placeholder.
+        showToast('iOS limits video playback to one sound at a time, and disables the volume fader.', 6000);
     } else {
         stagePlaceholder.innerHTML =
             `<div class="ph-list">` +
