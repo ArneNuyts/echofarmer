@@ -963,7 +963,7 @@ body.room-mode #gif-container {
     line-height: 1.7;
 }
 .ph-sub {
-    padding-left: 8px;
+    padding-left: 0;
 }
 .ph-mini-scrub {
     display: block;

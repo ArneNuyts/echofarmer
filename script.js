@@ -2546,8 +2546,8 @@ function createVideoPad() {
             `<span class="ph-num">1.</span><span class="ph-text">Paste a YouTube URL above.</span>` +
             `<span class="ph-num">2.</span><span class="ph-text">Click "MAP KEY" and press a key. <br> That key can now launch the video.</span>` +
             `<span class="ph-num">3.</span><span class="ph-text">To set the sample starting point, either...</span>` +
-            `<span class="ph-num">•</span><span class="ph-text ph-sub">...drag the play head sideways<span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
-            `<span class="ph-num">•</span><span class="ph-text ph-sub">...or drag the timecode up or down<span class="ph-mini-tc">0:42 / 3:15</span></span>` +
+            `<span class="ph-num"></span><span class="ph-text ph-sub">•<span style="padding-left:15px">...drag the play head sideways</span><span class="ph-mini-scrub"><span class="ph-mini-dot"></span></span></span>` +
+            `<span class="ph-num"></span><span class="ph-text ph-sub">•<span style="padding-left:15px">...or drag the timecode up or down</span><span class="ph-mini-tc">0:42 / 3:15</span></span>` +
             `</div>`;
     }
     stage.appendChild(stagePlaceholder);
