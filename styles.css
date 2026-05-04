@@ -1324,15 +1324,16 @@ body.room-mode #gif-container {
         width: 30px;
         height: 30px;
     }
-    /* Inset the absolutely-positioned knob dial by the .icon-button padding
-       (2px) so its rendered SVG matches the content-box sizing of the other
-       <img>-based icon buttons. Without this, width:100% on the dial would
-       resolve against the padding box and the knob would render ~4px larger
-       than its siblings. */
+    /* The knob.svg artwork (a solid circle) fills its viewBox edge-to-edge,
+       while the other action icons (lock, plus, question) have built-in
+       whitespace padding inside their viewBox. At the same container size,
+       the knob therefore reads as visually larger. Compensate by scaling
+       the rendered dial down to the same visual footprint (~84%). */
     #drive-knob .knob-dial {
-        inset: 2px;
+        inset: 0;
         width: auto;
         height: auto;
+        transform: scale(0.84);
     }
     /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as
        the actual font-size and scaling the element down to appear as the
