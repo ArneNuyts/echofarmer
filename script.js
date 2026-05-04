@@ -1589,7 +1589,11 @@ function showToast(text, duration = 2500) {
 
 function setHoverInfo(text) {
     // On touch devices redirect non-empty hints to the toast system.
-    if (isMobile) { if (text) showToast(text); return; }
+    // Respect the info toggle: when disabled, suppress hints entirely.
+    if (isMobile) {
+        if (text && infoFloatEnabled) showToast(text);
+        return;
+    }
     const floatEl = document.getElementById('info-float');
     if (!floatEl) return;
     if (!infoFloatEnabled) {
@@ -1903,7 +1907,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.video-pad').forEach(p => {
                 if (typeof p._refreshPlaceholder === 'function') p._refreshPlaceholder();
             });
-            setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info');
+            // The info-toggle's own feedback bypasses the gating in
+            // setHoverInfo (which now suppresses toasts when disabled) so the
+            // user always gets confirmation that the toggle worked.
+            if (isMobile) {
+                showToast(infoFloatEnabled ? 'Info on' : 'Info off');
+            } else {
+                setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info');
+            }
         });
     }
 
@@ -1929,9 +1940,10 @@ document.addEventListener('DOMContentLoaded', () => {
         infoToggleHover.addEventListener('mouseleave', () => setHoverInfo(''));
     }
 
-    // Scrollbar hover info
+    // Scrollbar hover info (desktop only — the scrollbar isn't really
+    // discoverable as a hover target on touch and a toast there adds noise).
     const scrollThumb = document.getElementById('custom-scrollbar-thumb');
-    if (scrollThumb) {
+    if (scrollThumb && !isMobile) {
         scrollThumb.addEventListener('mouseenter', () => setHoverInfo('Scroll anywhere to make more space'));
         scrollThumb.addEventListener('mouseleave', () => setHoverInfo(''));
     }

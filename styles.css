@@ -37,6 +37,8 @@ body.flat-mode {
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s;
+    /* Match the floating-element drop shadow used by gifs and the video pad */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
 }
 
 #info-float.visible {
@@ -586,7 +588,10 @@ body.room-mode #gif-container {
 }
 
 .btn-bandsintown {
+    /* inline-flex with no width = box hugs its text; align-self:flex-start
+       keeps it left-aligned inside the floor column instead of stretching. */
     display: inline-flex;
+    align-self: flex-start;
     align-items: center;
     justify-content: center;
     height: 30px;
@@ -1224,6 +1229,16 @@ body.room-mode #gif-container {
         row-gap: 44px;
         padding: 12px 8px;
     }
+    /* On mobile (single-column floor) center social/music icon rows */
+    .social-group,
+    .music-group {
+        justify-content: center;
+        width: 100%;
+    }
+    .social-links {
+        justify-content: center;
+        width: 100%;
+    }
 }
 
 /* Touch devices: disable hover effects that only make sense with a cursor */
@@ -1261,6 +1276,8 @@ body.room-mode #gif-container {
     transition: opacity 0.15s;
     pointer-events: none;
     z-index: 9999;
+    /* Match the floating-element drop shadow used by gifs and the video pad */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
 }
 #info-toast.visible { opacity: 1; }
 
