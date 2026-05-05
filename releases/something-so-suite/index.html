@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>something so suite — echofarmer</title>
+    <meta name="description" content="something so suite by echofarmer — out 15/05/26. Sign up to get notified, then listen on your favorite streaming service.">
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="music.song">
+    <meta property="og:title" content="something so suite — echofarmer">
+    <meta property="og:description" content="Out 15/05/26 — sign up to get notified.">
+    <meta property="og:image" content="../../gifs/pink_dolphin_release.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../_assets/style.css">
+</head>
+<body>
+    <div class="top-bar">
+        <a href="../../" class="site-link">echofarmer.eu</a>
+        <button type="button" class="share-btn">Share</button>
+    </div>
+
+    <main class="release-card">
+        <div class="release-cover">
+            <!-- Cover art src is set by page.js from RELEASE_CONFIG.cover -->
+            <img src="" alt="">
+        </div>
+
+        <div class="release-card-content">
+            <div class="release-meta">
+                <div class="release-artist"></div>
+                <h1 class="release-title"></h1>
+                <div class="release-date"></div>
+            </div>
+
+            <!-- Countdown until release date -->
+            <div class="release-countdown" role="timer" aria-live="off">
+                <div class="cd-cell"><div class="cd-num">0</div><div class="cd-label">Days</div></div>
+                <div class="cd-cell"><div class="cd-num">00</div><div class="cd-label">Hours</div></div>
+                <div class="cd-cell"><div class="cd-num">00</div><div class="cd-label">Min</div></div>
+                <div class="cd-cell"><div class="cd-num">00</div><div class="cd-label">Sec</div></div>
+            </div>
+
+            <!-- "Out now" hero (replaces countdown post-release) -->
+            <div class="release-out-now" hidden>Out now — listen below</div>
+
+            <!-- Pre-release notify form (auto-hidden once track is live) -->
+            <form class="notify-form" novalidate method="post"
+                  data-message="Thanks — you're on the list!">
+                <div class="notify-label">Get notified the moment it drops</div>
+                <div class="notify-row">
+                    <input type="text" name="hp" tabindex="-1" aria-hidden="true" class="notify-hp" autocomplete="off">
+                    <input type="email" name="email_address" class="notify-input"
+                           placeholder="your@email.com" required autocomplete="email" aria-label="Email address">
+                    <button type="submit" class="notify-submit">Notify me</button>
+                </div>
+                <div class="notify-status" aria-live="polite"></div>
+            </form>
+
+            <!-- Streaming service buttons (rendered by page.js) -->
+            <ul class="service-list"></ul>
+        </div>
+    </main>
+
+    <!-- Per-release config: edit this block when the release info changes.
+         Streaming URLs come in two flavors:
+           preLive  = where to send people BEFORE the release (e.g. artist
+                      page on that service, or null to hide the button)
+           postLive = where to send people AFTER the release (the actual
+                      track URL — fill in once DistroKid distributes it). -->
+    <script>
+    window.RELEASE_CONFIG = {
+        artist: "echofarmer",
+        title: "something so suite",
+        // ISRC for the release (kept here for reference; not used by the page logic).
+        isrc: "",
+        // ISO 8601 release date — Brussels timezone (CET/CEST).
+        // Adjust the +02:00 offset if needed (CEST is +02:00 from late March
+        // to late October, CET is +01:00 the rest of the year).
+        releaseDate: "2026-05-15T00:00:00+02:00",
+        // Cover art (relative to this index.html). Swap to actual album art
+        // when available — current placeholder is the floor-table icon.
+        cover: "../../gifs/pink_dolphin_release.png",
+        // EmailOctopus form-action URL for THIS release. Create a separate
+        // form in EmailOctopus that auto-tags subscribers with something like
+        // "presave:something-so-suite" so you can email this segment on
+        // release day. Leave action: "" until the form is created — page
+        // will show "Notification signup coming soon" until then.
+        emailoctopus: {
+            action: ""
+        },
+        // Streaming links. Set preLive: null to skip a button entirely
+        // before release; postLive will be filled in once DistroKid pushes
+        // the track and you have per-service URLs.
+        links: {
+            spotify: {
+                preLive:  "https://open.spotify.com/artist/542Nt23UmQC0tHUJxCSO5M",
+                postLive: ""
+            },
+            apple: {
+                preLive:  "https://music.apple.com/us/artist/echofarmer/1717770204",
+                postLive: ""
+            },
+            youtube: {
+                preLive:  "https://youtube.com/@echofarmer",
+                postLive: ""
+            },
+            bandcamp: {
+                preLive:  "https://echofarmer.bandcamp.com",
+                postLive: ""
+            },
+            soundcloud: {
+                preLive:  "https://soundcloud.com/echofarmer",
+                postLive: ""
+            },
+            tidal: {
+                preLive:  "https://tidal.com/artist/43987921",
+                postLive: ""
+            }
+        }
+    };
+    </script>
+    <script src="../_assets/page.js"></script>
+</body>
+</html>

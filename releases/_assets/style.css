@@ -1,0 +1,444 @@
+/* ── Release landing page ────────────────────────────────────────────────── */
+/* Full-viewport, no-scroll layout on every device.
+   Strategy:
+   - body uses 100dvh (dynamic viewport height — accounts for mobile browser
+     chrome appearing/disappearing) and is a flex column.
+   - Card grows to fill, but cover art shrinks via aspect-ratio + min(...) so
+     it never pushes content off-screen.
+   - All vertical paddings/gaps are clamp()ed so they relax on tall screens
+     and tighten on short ones.
+   Uses the same color palette and typography as the main echofarmer site. */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    /* dvh = dynamic viewport height: shrinks/grows when mobile URL bar
+       hides/shows. Falls back to vh on browsers that don't support it. */
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100dvh;
+    font-family: "Geist", sans-serif;
+    font-weight: 450;
+    color: #1b1916;
+    background: #b3aba0;
+    background-image:
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.05) 0%, transparent 40%),
+        radial-gradient(circle at 80% 90%, rgba(0,0,0,0.06) 0%, transparent 40%);
+    line-height: 1.4;
+    padding: clamp(8px, 2vh, 20px) clamp(8px, 3vw, 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Top bar with back-link and share button on the same row */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: clamp(6px, 1.5vh, 14px);
+    flex-shrink: 0;
+    max-width: 480px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.site-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4c453d;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.08s ease;
+}
+.site-link:hover {
+    color: #1b1916;
+    text-shadow: 0 0 0.5px currentColor;
+}
+.site-link::before {
+    content: "←";
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* Share button (now in top bar) */
+.share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: transparent;
+    color: #4c453d;
+    border: 1.5px dashed #595147;
+    border-radius: 3px;
+    font-family: "Geist", sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.08s ease, color 0.08s ease;
+    flex-shrink: 0;
+}
+.share-btn:hover {
+    background: #4c453d;
+    color: #dfdcd8;
+}
+.share-btn.copied {
+    background: #4c8a3e;
+    color: #dfdcd8;
+    border-style: solid;
+}
+
+/* ── Main card — fills remaining viewport ───────────────────────────────── */
+.release-card {
+    max-width: 480px;
+    width: 100%;
+    margin: 0 auto;
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 5px;
+    padding: clamp(10px, 1.8vh, 18px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1.4vh, 14px);
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Cover art: square aspect-ratio, capped so on short/wide screens it
+   doesn't dominate. Picks the smaller of: full-width, or 38% of vh
+   (so it scales DOWN gracefully on short landscape phones / laptops). */
+.release-cover {
+    aspect-ratio: 1 / 1;
+    width: min(100%, 38vh);
+    align-self: center;
+    background: #9b9183;
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 1;
+    min-height: 0;
+}
+.release-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Title block */
+.release-meta {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.release-artist {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4c453d;
+}
+.release-title {
+    font-size: clamp(18px, 3vh, 24px);
+    font-weight: 700;
+    color: #1b1916;
+    line-height: 1.15;
+}
+.release-date {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4c453d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+}
+.release-date.live::before {
+    content: "● ";
+    color: #4c8a3e;
+}
+
+/* Countdown */
+.release-countdown {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    text-align: center;
+    background: #b3aba0;
+    border-radius: 3px;
+    padding: clamp(5px, 1vh, 8px) 4px;
+    flex-shrink: 0;
+}
+.release-countdown[hidden] { display: none; }
+.cd-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.cd-num {
+    font-size: clamp(16px, 2.6vh, 22px);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #1b1916;
+    line-height: 1;
+}
+.cd-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4c453d;
+}
+
+/* "Out now" hero */
+.release-out-now {
+    background: #4c453d;
+    color: #dfdcd8;
+    text-align: center;
+    padding: 8px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.release-out-now[hidden] { display: none; }
+
+/* ── Email signup ────────────────────────────────────────────────────────── */
+.notify-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: #f0ede9;
+    border-radius: 3px;
+    padding: clamp(6px, 1.2vh, 10px);
+    flex-shrink: 0;
+}
+.notify-form[hidden] { display: none; }
+.notify-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1b1916;
+    text-align: center;
+}
+.notify-row {
+    display: flex;
+    gap: 5px;
+    position: relative;
+}
+.notify-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    font-family: "Geist", sans-serif;
+    font-size: 13px;
+    color: #1b1916;
+    background: #fff;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.1s ease;
+}
+.notify-input:focus { border-color: #4c453d; }
+.notify-input::placeholder { color: #9b9183; }
+.notify-submit {
+    padding: 6px 12px;
+    font-family: "Geist", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #dfdcd8;
+    background: #4c453d;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.08s ease, color 0.08s ease;
+    white-space: nowrap;
+}
+.notify-submit:hover {
+    background: #bfb8af;
+    color: #4c453d;
+}
+.notify-submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+/* Honeypot */
+.notify-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+}
+.notify-status {
+    font-size: 11px;
+    color: #4c453d;
+    text-align: center;
+    min-height: 0;
+}
+.notify-status:empty { display: none; }
+.notify-status.error { color: #b04040; }
+.notify-status.success {
+    color: #1b1916;
+    font-weight: 600;
+}
+/* Custom validation tooltip */
+.notify-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    padding: 5px 9px;
+    font-family: "Geist", sans-serif;
+    font-size: 12px;
+    color: #1b1916;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.notify-tooltip::before {
+    content: '';
+    position: absolute;
+    width: 0; height: 0;
+    bottom: 100%; left: 12px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #595147;
+}
+.notify-tooltip::after {
+    content: '';
+    position: absolute;
+    width: 0; height: 0;
+    bottom: calc(100% - 1.5px); left: 13px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid #dfdcd8;
+}
+
+/* ── Streaming service buttons ───────────────────────────────────────────── */
+.service-list {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(4px, 0.8vh, 7px);
+    list-style: none;
+    flex-shrink: 1;
+    min-height: 0;
+    /* If for some reason buttons can't all fit, allow internal scroll
+       rather than push content off the page. */
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.service-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: clamp(6px, 1.1vh, 9px) 12px;
+    background: #4c453d;
+    color: #dfdcd8;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13px;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    transition: background 0.08s ease, color 0.08s ease;
+    cursor: pointer;
+}
+.service-link:hover {
+    background: #bfb8af;
+    color: #4c453d;
+}
+.service-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    /* Source icons are dark — invert so they show light on the dark button */
+    filter: invert(94%) sepia(8%) saturate(94%) hue-rotate(348deg) brightness(95%) contrast(86%);
+    transition: filter 0.08s ease;
+}
+.service-link:hover .service-icon {
+    filter: none;
+}
+.service-name {
+    flex: 1;
+    text-align: left;
+}
+.service-arrow {
+    font-size: 14px;
+    opacity: 0.6;
+}
+
+/* ── Landscape / very short viewports ───────────────────────────────────── */
+/* On short landscape phone (~375h), cover becomes the bottleneck — switch
+   to side-by-side: cover left, content stack right. */
+@media (max-height: 540px) and (orientation: landscape) {
+    body {
+        padding: clamp(6px, 1.5vh, 12px) clamp(10px, 2vw, 20px);
+    }
+    .top-bar { max-width: 720px; }
+    .release-card {
+        max-width: 720px;
+        flex-direction: row;
+        align-items: stretch;
+        gap: 14px;
+        padding: 12px;
+    }
+    .release-cover {
+        width: auto;
+        height: 100%;
+        align-self: stretch;
+        flex-shrink: 0;
+    }
+    .release-card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .release-meta { gap: 1px; }
+    .release-title { font-size: 18px; }
+    .release-countdown { padding: 5px 4px; }
+    .cd-num { font-size: 16px; }
+    .service-link { padding: 5px 10px; font-size: 12px; }
+    .service-icon { width: 16px; height: 16px; }
+}
+
+/* Portrait, very short (e.g. iPhone SE landscape forced to portrait): shrink cover further */
+@media (max-height: 600px) and (orientation: portrait) {
+    .release-cover { width: min(100%, 30vh); }
+}
