@@ -46,7 +46,7 @@
     <meta name="format-detection" content="telephone=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <!--
       Preload the animated WebP gif assets so the browser starts fetching
@@ -67,7 +67,33 @@
             <img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Close">
         </button>
         <div class="welcome-title">Welcome!</div>
-        <div class="welcome-body">Each single from Tiny Big Much adds samples to this website until the sample pack is complete.<br>Not sure what's what? Hover over any element to get more information.</div>
+        <div class="welcome-body">Each single from my mixtape <i>Tiny Big Much</i> adds samples to this website until the sample pack is complete.<br>Not sure what's what? Hover over any element to get more information.</div>
+    </div>
+    <!-- Mailing list modal — shown when "Subscribe to my mailing list" is clicked.
+         Form action + list ID will be filled in once the EmailOctopus account is set up.
+         EmailOctopus embedded-form fields: email_address (required) + hp (honeypot, must be empty). -->
+    <div id="mailing-modal" class="welcome-modal mailing-modal" hidden>
+        <button id="mailing-close" class="welcome-close" aria-label="Close">
+            <img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Close">
+        </button>
+        <div class="welcome-title">Stay in the loop</div>
+        <div class="welcome-body mailing-body">Get notified when new releases drop and new shows are announced.</div>
+        <form id="mailing-form" class="mailing-form" novalidate
+              action="https://emailoctopus.com/lists/REPLACE_LIST_ID/members/embedded/1.3/add"
+              method="post" data-message="Thanks — you're on the list!">
+            <!-- Honeypot: bots fill this; humans leave it empty. Hidden via CSS, not display:none,
+                 so screenreaders skip it but the field is still in the form submission. -->
+            <input type="text" name="hp" tabindex="-1" aria-hidden="true" class="mailing-hp">
+            <div class="mailing-field">
+                <input type="email" name="email_address" id="mailing-email"
+                       placeholder="your@email.com" required autocomplete="email"
+                       class="mailing-input">
+            </div>
+            <div class="mailing-actions">
+                <button type="submit" class="mailing-submit">Subscribe</button>
+            </div>
+            <div class="mailing-status" aria-live="polite"></div>
+        </form>
     </div>
     <div id="right-panel"></div>
     <div id="controls-bar" class="controls-bar">
@@ -79,7 +105,7 @@
         <button id="add-video" class="icon-button add-video" aria-label="Add video"><img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Add"></button>
         <button id="info-toggle" class="icon-button" aria-label="Toggle info"><img src="icons/SVG-STATES/NORMAL/question.svg" alt="Info"></button>
     </div>
-    <div id="bottom-frame-bar"></div>
+    <div id="bottom-frame-bar"><span class="copyright">&copy; Arne Nuyts <span id="footer-year">2026</span></span></div>
     <div id="frame-wrapper">
         <div id="frame-inner">
             <canvas id="header-canvas" class="header-canvas"></canvas>
@@ -101,25 +127,50 @@
                 <div class="floor-part floor-bio">
                     <h3 class="floor-heading">About</h3>
                     <div class="bio">
-                        <p>echofarmer (BE) is the alias of Brussels-based producer and musician Arne Nuyts. With a sound as suited for the club as for the couch, echofarmer crafts enchanting miniverses. Hyperdetailed percussion and deep subs fuse with vocal-like synths, acoustic instruments, and found sounds. Combining childlike joy with surgical precision, every live set is infectiously unique, all unified by echofarmer's tactile approach to sound and relentless appetite for experimentation.<br><br>From teletubbie hyperjungle to bedroomstep and pillowcore, echofarmer blurs the line between dance floor and blanket fort.</p>
+                        <p>Hi! I'm echofarmer (all lower case please), a Brussels-based producer and musician. For each club show I compulsively created new tracks. As I kept refining them through playing live, an entity took shape. <br><i>Tiny Big Much</i> became a mixtape that celebrates my deep connection with the computer as an instrument. As new parts of Tiny Big Much are released, this website grows along. Crafted with love by me, I hope you enjoy this evolving miniverse.
+
+</p>
                     </div>
                 </div>
 
                 <div class="floor-part floor-releases">
                     <h3 class="floor-heading">Tiny Big Much</h3>
-                    <div class="releases-list">
-                        <div class="release-item">
-                            <span class="release-date">May 15th 2026</span>
-                            <span class="release-title">Something So Suite: a single in three parts</span>
-                        </div>
-                        <div class="release-item">
-                            <span class="release-date">Autumn 2026</span>
-                            <span class="release-title">Full mixtape drops</span>
-                        </div>
-
-            
-                        
-                    </div>
+                    <table class="releases-table floor-releases-table">
+                        <thead>
+                            <tr class="release-head">
+                                <th class="rt-name">TITLE</th>
+                                <th class="rt-sample">SAMPLES</th>
+                                <th class="rt-release">TRACK</th>
+                                <th class="rt-icon">ICON</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="release-row" data-href="https://distrokid.com/hyperfollow/echofarmer/something-so-suite?ref=release">
+                                <td class="rt-name">something so suite</td>
+                                <td class="rt-sample">08/05/26</td>
+                                <td class="rt-release">15/05/26</td>
+                                <td class="rt-icon"><img src="gifs/pink_dolphin_release.png" alt=""></td>
+                            </tr>
+                            <tr class="release-row not-live">
+                                <td class="rt-name">nod shot</td>
+                                <td class="rt-sample">19/06/26</td>
+                                <td class="rt-release">26/06/26</td>
+                                <td class="rt-icon"><img src="gifs/release2-bee.png" alt=""></td>
+                            </tr>
+                            <tr class="release-row not-live">
+                                <td class="rt-name">monobaby</td>
+                                <td class="rt-sample">11/09/26</td>
+                                <td class="rt-release">18/09/26</td>
+                                <td class="rt-icon"><img src="gifs/release3.png" alt=""></td>
+                            </tr>
+                            <tr class="release-row not-live">
+                                <td class="rt-name">Tiny Big Much</td>
+                                <td class="rt-sample">09/10/26</td>
+                                <td class="rt-release">16/10/26</td>
+                                <td class="rt-icon"><img src="gifs/release4-color.png" alt=""></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="floor-part floor-shows">
@@ -135,20 +186,20 @@
                             <div><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">This Here Now (Junior)</a></div>
                             <div><strong>Booking BE &amp; NL:</strong> <a href="mailto:ilja@greenhousetalent.be" class="contact-link">Greenhouse Talent (Ilja)</a></div>
                         </div>
-                        <a href="#" class="contact-link mailing-list-link links-section-sep">Subscribe to my mailing list</a>
+                        <a href="#" class="btn-bandsintown mailing-list-link links-section-sep">Subscribe to my mailing list</a>
                         <div class="social-group links-section-sep">
-                            <a class="icon-link" href="https://www.instagram.com/echofarmer_/" target="_blank" aria-label="Instagram"><img src="icons/SVG-STATES/NORMAL/instagram.svg" alt="Instagram"></a>
-                            <a class="icon-link" href="https://www.facebook.com/echofarmerrr" target="_blank" aria-label="Facebook"><img src="icons/SVG-STATES/NORMAL/facebook.svg" alt="Facebook"></a>
-                            <a class="icon-link" href="https://youtube.com/@echofarmer" target="_blank" aria-label="YouTube"><img src="icons/SVG-STATES/NORMAL/youtube.svg" alt="YouTube"></a>
-                            <a class="icon-link" href="https://www.tiktok.com/@echofarmer_" target="_blank" aria-label="TikTok"><img src="icons/SVG-STATES/NORMAL/tiktok.svg" alt="TikTok"></a>
-                            <a class="icon-link" href="https://linktr.ee/echofarmer" target="_blank" aria-label="Linktree"><img src="icons/SVG-STATES/NORMAL/linktree.svg" alt="Linktree"></a>
+                            <a class="icon-link" href="https://www.instagram.com/echofarmer_/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><img src="icons/SVG-STATES/NORMAL/instagram.svg" alt="Instagram"></a>
+                            <a class="icon-link" href="https://www.facebook.com/echofarmerrr" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><img src="icons/SVG-STATES/NORMAL/facebook.svg" alt="Facebook"></a>
+                            <a class="icon-link" href="https://youtube.com/@echofarmer" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><img src="icons/SVG-STATES/NORMAL/youtube.svg" alt="YouTube"></a>
+                            <a class="icon-link" href="https://www.tiktok.com/@echofarmer_" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><img src="icons/SVG-STATES/NORMAL/tiktok.svg" alt="TikTok"></a>
+                            <a class="icon-link" href="https://linktr.ee/echofarmer" target="_blank" rel="noopener noreferrer" aria-label="Linktree"><img src="icons/SVG-STATES/NORMAL/linktree.svg" alt="Linktree"></a>
                         </div>
                         <div class="music-group">
-                            <a class="icon-link" href="https://echofarmer.bandcamp.com" target="_blank" aria-label="Bandcamp"><img src="icons/SVG-STATES/NORMAL/bandcamp.svg" alt="Bandcamp"></a>
-                            <a class="icon-link" href="https://music.apple.com/us/artist/echofarmer/1717770204" target="_blank" aria-label="Apple Music"><img src="icons/SVG-STATES/NORMAL/apple-music.svg" alt="Apple Music"></a>
-                            <a class="icon-link" href="https://open.spotify.com/artist/542Nt23UmQC0tHUJxCSO5M?si=mbEWtW8zTZq8bPKp93zshw" target="_blank" aria-label="Spotify"><img src="icons/SVG-STATES/NORMAL/spotify.svg" alt="Spotify"></a>
-                            <a class="icon-link" href="https://tidal.com/artist/43987921" target="_blank" aria-label="Tidal"><img src="icons/SVG-STATES/NORMAL/tidal.svg" alt="Tidal"></a>
-                            <a class="icon-link" href="https://soundcloud.com/echofarmer" target="_blank" aria-label="SoundCloud"><img src="icons/SVG-STATES/NORMAL/soundcloud.svg" alt="SoundCloud"></a>
+                            <a class="icon-link" href="https://echofarmer.bandcamp.com" target="_blank" rel="noopener noreferrer" aria-label="Bandcamp"><img src="icons/SVG-STATES/NORMAL/bandcamp.svg" alt="Bandcamp"></a>
+                            <a class="icon-link" href="https://music.apple.com/us/artist/echofarmer/1717770204" target="_blank" rel="noopener noreferrer" aria-label="Apple Music"><img src="icons/SVG-STATES/NORMAL/apple-music.svg" alt="Apple Music"></a>
+                            <a class="icon-link" href="https://open.spotify.com/artist/542Nt23UmQC0tHUJxCSO5M?si=mbEWtW8zTZq8bPKp93zshw" target="_blank" rel="noopener noreferrer" aria-label="Spotify"><img src="icons/SVG-STATES/NORMAL/spotify.svg" alt="Spotify"></a>
+                            <a class="icon-link" href="https://tidal.com/artist/43987921" target="_blank" rel="noopener noreferrer" aria-label="Tidal"><img src="icons/SVG-STATES/NORMAL/tidal.svg" alt="Tidal"></a>
+                            <a class="icon-link" href="https://soundcloud.com/echofarmer" target="_blank" rel="noopener noreferrer" aria-label="SoundCloud"><img src="icons/SVG-STATES/NORMAL/soundcloud.svg" alt="SoundCloud"></a>
                         </div>
                     </div>
                 </div>

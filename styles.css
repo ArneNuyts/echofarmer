@@ -65,6 +65,18 @@ body.flat-mode {
     z-index: 200;
     transform: translateY(100%);
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#bottom-frame-bar .copyright {
+    color: #bfb8af;
+    font-family: 'Geist', sans-serif;
+    font-size: 11px;
+    font-weight: 450;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    user-select: none;
 }
 
 #right-panel {
@@ -507,6 +519,18 @@ body.room-mode #gif-container {
     font-size: 13px;
 }
 
+/* Footer copyright sits as a full-width row at the bottom of the floor grid. */
+.site-footer {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 1px solid #8a8175;
+    color: #4c453d;
+    font-size: 11px;
+    font-weight: 450;
+    text-align: center;
+}
+
 /* Individual floor parts */
 .floor-part {
     display: flex;
@@ -537,6 +561,10 @@ body.room-mode #gif-container {
 .show-location,
 .contact-link {
     color: #4c453d;
+}
+/* Ensure pointer cursor on all clickable anchors in the floor section. */
+.floor-section a {
+    cursor: pointer;
 }
 
 /* Bio section */
@@ -602,12 +630,15 @@ body.room-mode #gif-container {
     color: #1b1916;
     text-decoration: none;
     border-bottom: 1px dotted #595147;
-    transition: color 0.2s ease;
+    transition: color 0.08s ease, border-bottom-color 0.08s ease;
+    cursor: pointer;
 }
 
-.show-venue a:hover {
-    color: #4c453d;
-    border-bottom-color: #4c453d;
+.show-venue a:hover,
+.floor-section .show-venue a:hover {
+    color: #dfdcd8;
+    border-bottom-color: #dfdcd8;
+    text-shadow: 0 0 0.5px currentColor;
 }
 
 .show-location {
@@ -788,11 +819,13 @@ body.room-mode #gif-container {
     color: #1b1916;
     text-decoration: none;
     border-bottom: 1px dotted #595147;
-    transition: color 0.2s ease, border-bottom-color 0.2s ease;
+    transition: color 0.08s ease, border-bottom-color 0.08s ease;
+    cursor: pointer;
 }
-.contact-link:hover {
-    color: #4c453d;
-    border-bottom-color: #4c453d;
+.floor-section a.contact-link:hover {
+    color: #dfdcd8;
+    border-bottom-color: #dfdcd8;
+    text-shadow: 0 0 0.5px currentColor;
 }
 
 /* Lock Button — icon-button in controls bar, no extra positioning */
@@ -1343,7 +1376,7 @@ body.room-mode #gif-container {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(280px, calc(100vw - 48px));
+    width: min(310px, calc(100vw - 48px));
     background: #dfdcd8;
     border: 1.5px solid #595147;
     border-radius: 3px;
@@ -1363,6 +1396,7 @@ body.room-mode #gif-container {
 .welcome-modal.visible { opacity: 1; }
 /* Hover scale-up matches the gif items. */
 .welcome-modal.positioned:hover { transform: scale(1.05); }
+
 .welcome-title {
     font-size: 13px;
     font-weight: 700;
@@ -1403,6 +1437,248 @@ body.room-mode #gif-container {
 .welcome-close:hover img {
     /* #4c453d × 1.64 ≈ #7c7164 */
     filter: brightness(1.64);
+}
+
+.releases-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
+    font-size: 13px;
+    font-weight: 450;
+    line-height: 1.15;
+    color: #4c453d;
+}
+.releases-table th,
+.releases-table td {
+    border: none;
+    padding: 2px 8px 2px 0;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-align: left;
+    color: #4c453d;
+}
+.releases-table thead th {
+    font-weight: 600;
+    font-size: 12px;
+    padding-bottom: 4px;
+    letter-spacing: 0.01em;
+}
+.releases-table tbody td {
+    font-weight: 450;
+}
+/* Live rows behave as links (wired up in JS via data-href). */
+.releases-table tr.release-row[data-href] {
+    cursor: pointer;
+}
+.releases-table tr.release-row[data-href]:hover td:not(.rt-icon) {
+    color: #dfdcd8;
+    text-shadow: 0 0 0.5px currentColor;
+    transition: color 0.08s ease;
+}
+.releases-table td.rt-icon,
+.releases-table th.rt-icon {
+    padding-right: 0;
+    width: 36px;
+}
+.releases-table td.rt-icon { text-align: right; }
+.releases-table th.rt-icon { text-align: left; }
+.releases-table td.rt-icon img {
+    height: 30px;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+    pointer-events: none;
+}
+/* Not-live releases: greyed + blurred to read as "coming soon, not actionable".
+   Also unselectable so the obscured titles/dates can't be copied out of the DOM
+   (the underlying text is still in the HTML source, but this discourages casual
+   leaking via copy/paste). */
+/* Not-live releases: greyed + blurred to read as "coming soon, not actionable".
+   Also unselectable so the obscured titles/dates can't be copied out of the DOM
+   (the underlying text is still in the HTML source, but this discourages casual
+   leaking via copy/paste).
+   Blur is applied to the whole <tr> (instead of each <td>) so the soft halo
+   stays continuous across cells rather than getting clipped at every cell
+   edge. */
+.releases-table .release-row.not-live {
+    filter: blur(5px);
+}
+.releases-table .release-row.not-live td {
+    color: #4c453d;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-touch-callout: none;
+}
+.releases-table .release-row.not-live td.rt-icon img {
+    /* Slightly less blur on the icon since it's already inside the row blur,
+       and full opacity bump matches what we had. */
+    opacity: 0.85;
+}
+
+/* ── Mailing list modal ───────────────────────────────────────────────────── */
+.mailing-modal {
+    width: min(320px, calc(100vw - 48px));
+    cursor: default;
+}
+.mailing-modal.positioned:hover { transform: none; }
+.mailing-body {
+    margin-bottom: 12px;
+}
+.mailing-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+/* Honeypot: visually hidden but in flow so autofill doesn't flag it */
+.mailing-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+}
+.mailing-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.mailing-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: #dfdcd8;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    padding: 5px 9px;
+    font-family: "Geist", sans-serif;
+    font-size: 12px;
+    color: #1b1916;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.mailing-tooltip::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    bottom: 100%;
+    left: 12px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #595147;
+}
+.mailing-tooltip::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    bottom: calc(100% - 1.5px);
+    left: 13px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid #dfdcd8;
+}
+.mailing-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    font-family: "Geist", sans-serif;
+    font-size: 13px;
+    color: #1b1916;
+    background: #f0ede9;
+    border: 1.5px solid #595147;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.1s ease;
+}
+.mailing-input:focus {
+    border-color: #4c453d;
+}
+.mailing-input::placeholder {
+    color: #9b9183;
+}
+.mailing-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+.mailing-submit {
+    padding: 5px 14px;
+    font-family: "Geist", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #dfdcd8;
+    background: #4c453d;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.08s ease, color 0.08s ease;
+}
+.mailing-submit:hover {
+    background: #e5ad3e;
+    color: #4c453d;
+}
+.mailing-submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.mailing-status {
+    font-size: 12px;
+    color: #4c453d;
+    min-height: 1em;
+    text-align: center;
+}
+.mailing-status.error {
+    color: #b04040;
+}
+
+/* Floor variant: same row structure as the modal, just tighter. */
+.floor-releases {
+    min-width: 0;
+    /* Padding gives the blur halo of `.release-row.not-live` room to fade
+       out instead of being clipped at the column edge. overflow stays
+       visible so the halo isn't clipped vertically either. */
+    padding: 6px 6px 6px 0;
+    margin: -6px -6px -6px 0;
+}
+.floor-releases-table {
+    /* Belt-and-suspenders: if the table somehow can't shrink enough on a
+       very narrow viewport, fix the layout so cell widths are predictable
+       and don't burst the column. */
+    table-layout: auto;
+}
+.floor-releases-table th,
+.floor-releases-table td {
+    padding: 3px 8px 3px 0;
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+.floor-releases-table thead th { font-size: 11px; }
+.floor-releases-table td.rt-icon,
+.floor-releases-table th.rt-icon { width: 32px; }
+.floor-releases-table td.rt-icon img { height: 24px; }
+
+/* Tighten the release table on narrow phones so it always fits a single column
+   of the floor section without wrapping or horizontal scroll. */
+@media (max-width: 540px) {
+    .floor-releases-table th,
+    .floor-releases-table td {
+        padding: 3px 6px 3px 0;
+        font-size: 11px;
+    }
+    .floor-releases-table thead th { font-size: 10px; }
+    .floor-releases-table td.rt-icon,
+    .floor-releases-table th.rt-icon { width: 26px; }
+    .floor-releases-table td.rt-icon img { height: 20px; }
 }
 
 /* Never show the cursor-follow info float on touch-primary devices */

@@ -907,6 +907,7 @@ window.addEventListener('load', () => {
     }, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 })();
+
 if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
         scheduleGridRedraw();
@@ -1043,9 +1044,15 @@ class GifSampler {
         this.config = config;
         this.container = document.getElementById('gif-container');
         this.gifs = [];
-        // Physical key codes matching the original layout (AZERTY: Q=KeyA, Z=KeyW; QWERTY: A=KeyA, W=KeyW)
+        // Physical key codes — layout-independent (e.code is QWERTY-named
+        // even on AZERTY/QWERTZ). Maps to the AZERTY letters Q,Z,S,E,D,F,T,
+        // G,Y,H,U,J,K,O,L on a French/Belgian keyboard, which sit at the
+        // same physical positions as A,W,S,E,D,F,T,G,Y,H,U,J,K,O,L on
+        // QWERTY. Display labels (this.keyLabels) are resolved per-visitor
+        // by _initKeyLabels via KeyboardLayoutMap (Chromium) or by learning
+        // from keydown events (Firefox/Safari).
         this.triggerCodes = ['KeyA','KeyW','KeyS','KeyE','KeyD','KeyF','KeyT','KeyG','KeyY','KeyH','KeyU','KeyJ','KeyK','KeyO','KeyL'];
-        // Display labels — QWERTY defaults; updated by KeyboardLayoutMap when available
+        // Display labels — QWERTY defaults; updated by _initKeyLabels
         this.keyLabels = ['A','W','S','E','D','F','T','G','Y','H','U','J','K','O','L'];
         this.init();
         this.setupAudioUnlock();
@@ -1054,13 +1061,49 @@ class GifSampler {
     }
 
     _initKeyLabels() {
+        // Modern path: Chromium exposes the OS keyboard layout map directly.
+        // Resolves once on load, no user interaction needed.
         if (navigator.keyboard && typeof navigator.keyboard.getLayoutMap === 'function') {
             navigator.keyboard.getLayoutMap().then(map => {
+                let changed = false;
                 this.triggerCodes.forEach((code, i) => {
-                    if (map.has(code)) this.keyLabels[i] = map.get(code).toUpperCase();
+                    if (map.has(code)) {
+                        const label = map.get(code).toUpperCase();
+                        if (label && label !== this.keyLabels[i]) {
+                            this.keyLabels[i] = label;
+                            changed = true;
+                        }
+                    }
                 });
+                if (changed) this._refreshHoverMsgs();
             }).catch(() => {});
         }
+        // Fallback for Firefox / Safari (no KeyboardLayoutMap): learn labels
+        // from real keydown events. Each press of a tracked physical key
+        // updates that slot's display label to whatever character that key
+        // actually produces on the visitor's layout. Runs continuously so
+        // late-arriving presses also refine the labels.
+        document.addEventListener('keydown', (e) => {
+            const i = this.triggerCodes.indexOf(e.code);
+            if (i === -1) return;
+            // Only single printable characters; skip Dead, Shift, etc.
+            if (!e.key || e.key.length !== 1) return;
+            const label = e.key.toUpperCase();
+            if (label === this.keyLabels[i]) return;
+            this.keyLabels[i] = label;
+            this._refreshHoverMsgs();
+        }, true);
+    }
+
+    _refreshHoverMsgs() {
+        // Rebuild each existing gif's hoverMsg so the info bar reflects the
+        // newly-resolved physical key label. The hover text is read on hover
+        // from gifData.hoverMsg, so updating it in place is enough.
+        if (!this.gifs) return;
+        this.gifs.forEach((g, i) => {
+            if (!g) return;
+            g.hoverMsg = `Click me or press (${this.keyLabels[i]}). Drag me to move me to a new spot.`;
+        });
     }
 
     setupAudioUnlock() {
@@ -3203,3 +3246,177 @@ document.addEventListener('dragstart', (e) => {
         e.preventDefault();
     }
 });
+
+// Auto-update the footer year so the copyright stays current.
+(function setFooterYear() {
+    const el = document.getElementById('footer-year');
+    if (el) el.textContent = new Date().getFullYear();
+})();
+
+// Wire the floor-section release table the same way as the modal:
+// clicking a row with data-href opens the pre-save / streaming page.
+(function wireFloorReleaseLinks() {
+    const table = document.querySelector('.floor-releases-table');
+    if (!table) return;
+    table.addEventListener('click', (e) => {
+        const row = e.target.closest('tr.release-row[data-href]');
+        if (!row) return;
+        const href = row.getAttribute('data-href');
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+    });
+})();
+
+// ── Mailing list modal ─────────────────────────────────────────────────────
+// Shown when the "Subscribe to my mailing list" link is clicked.
+// Submits to the EmailOctopus embedded form endpoint; falls back to a
+// mailto link or shows an error if the action URL hasn't been filled in yet.
+(function setupMailingModal() {
+    const modal   = document.getElementById('mailing-modal');
+    const form    = document.getElementById('mailing-form');
+    const closeBtn = document.getElementById('mailing-close');
+    const statusEl = modal ? modal.querySelector('.mailing-status') : null;
+    const submitBtn = form ? form.querySelector('.mailing-submit') : null;
+    const triggerLink = document.querySelector('a.mailing-list-link');
+    if (!modal || !triggerLink) return;
+
+    let visible = false;
+    let positioned = false;
+
+    const show = () => {
+        if (visible) return;
+        modal.hidden = false;
+        if (!positioned) {
+            const mw = modal.offsetWidth || 320;
+            const mh = modal.offsetHeight || 160;
+            modal.classList.add('positioned');
+            modal.style.left = Math.round((window.innerWidth  - mw) / 2) + 'px';
+            modal.style.top  = Math.round((window.innerHeight - mh) / 2) + 'px';
+            positioned = true;
+        }
+        void modal.offsetWidth;
+        modal.classList.add('visible');
+        requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('with-transition')));
+        visible = true;
+        // Focus the email input for keyboard users
+        const emailInput = form && form.querySelector('.mailing-input');
+        if (emailInput) setTimeout(() => emailInput.focus(), 50);
+    };
+
+    const hide = () => {
+        visible = false;
+        modal.classList.remove('visible');
+        setTimeout(() => { if (!visible) modal.hidden = true; }, 200);
+    };
+
+    // Open on link click (prevent default navigation)
+    triggerLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        show();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', hide);
+
+    // Form submit: POST to EmailOctopus embedded endpoint via fetch.
+    // EmailOctopus returns a redirect on success — we detect that by
+    // checking the response URL or catching CORS (their embedded endpoint
+    // doesn't send CORS headers, so a fetch will fail with a network error
+    // on success). We treat the CORS error as "likely success" and show the
+    // confirmation message.
+    // Custom validation tooltip (form uses novalidate to suppress browser UI)
+    let _tooltip = null;
+    const showFieldTooltip = (input, msg) => {
+        if (_tooltip) { _tooltip.remove(); _tooltip = null; }
+        const field = input.closest('.mailing-field');
+        if (!field) return;
+        _tooltip = document.createElement('div');
+        _tooltip.className = 'mailing-tooltip';
+        _tooltip.textContent = msg;
+        field.appendChild(_tooltip);
+        input.addEventListener('input', () => {
+            if (_tooltip) { _tooltip.remove(); _tooltip = null; }
+        }, { once: true });
+    };
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const action = form.getAttribute('action') || '';
+            const isPlaceholder = action.includes('REPLACE_LIST_ID');
+
+            // Clear previous status
+            if (statusEl) { statusEl.textContent = ''; statusEl.className = 'mailing-status'; }
+            if (submitBtn) submitBtn.disabled = true;
+
+            // Custom validation
+            const emailInput = form.querySelector('.mailing-input');
+            if (emailInput && !emailInput.validity.valid) {
+                const msg = emailInput.validity.valueMissing
+                    ? 'Please fill in your email address.'
+                    : 'Please enter a valid email address.';
+                showFieldTooltip(emailInput, msg);
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            // If the action URL hasn't been filled in yet, just show a
+            // "coming soon" message so the UI doesn't feel broken during dev.
+            if (isPlaceholder) {
+                if (statusEl) statusEl.textContent = 'Mailing list coming soon — check back later!';
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            const data = new FormData(form);
+            // Honeypot must be empty
+            if (data.get('hp')) {
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            try {
+                // EmailOctopus embedded endpoint doesn't support CORS, so
+                // fetch will throw a TypeError. We treat that as success
+                // (the request did go through from the browser's perspective).
+                await fetch(action, { method: 'POST', body: data, mode: 'no-cors' });
+                const msg = form.getAttribute('data-message') || 'Thanks — you\'re on the list!';
+                if (statusEl) statusEl.textContent = msg;
+                form.reset();
+            } catch (_) {
+                if (statusEl) {
+                    statusEl.textContent = 'Something went wrong. Please try again.';
+                    statusEl.classList.add('error');
+                }
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // Draggable — mirrors the welcome modal pattern
+    let _dragging = false, _offX = 0, _offY = 0;
+    modal.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button, input')) return;
+        const r = modal.getBoundingClientRect();
+        _offX = e.clientX - r.left; _offY = e.clientY - r.top;
+        _dragging = true;
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        modal.style.left = (e.clientX - _offX) + 'px';
+        modal.style.top  = (e.clientY - _offY) + 'px';
+    });
+    document.addEventListener('mouseup', () => { _dragging = false; });
+    modal.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button, input')) return;
+        const r = modal.getBoundingClientRect();
+        _offX = e.touches[0].clientX - r.left; _offY = e.touches[0].clientY - r.top;
+        _dragging = true;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+        if (!_dragging) return;
+        if (e.cancelable) e.preventDefault();
+        modal.style.left = (e.touches[0].clientX - _offX) + 'px';
+        modal.style.top  = (e.touches[0].clientY - _offY) + 'px';
+    }, { passive: false });
+    document.addEventListener('touchend', () => { _dragging = false; });
+})();
