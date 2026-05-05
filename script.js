@@ -706,6 +706,24 @@ function setupRoomScrollOpen() {
         let _fsLastT = 0;
         let _fsVel = 0; // px / ms
         let _fsRaf = null;
+        // Batch scrollTop writes into one-per-frame to keep scrolling smooth.
+        // Multiple touchmove events between paints would otherwise each trigger
+        // a synchronous layout/paint and look jittery on iOS.
+        let _fsPendingDy = 0;
+        let _fsFlushScheduled = false;
+        const flushScroll = () => {
+            _fsFlushScheduled = false;
+            if (_fsPendingDy !== 0) {
+                scroller.scrollTop += _fsPendingDy;
+                _fsPendingDy = 0;
+            }
+        };
+        const queueScroll = (dy) => {
+            _fsPendingDy += dy;
+            if (_fsFlushScheduled) return;
+            _fsFlushScheduled = true;
+            requestAnimationFrame(flushScroll);
+        };
         const cancelMomentum = () => {
             if (_fsRaf !== null) { cancelAnimationFrame(_fsRaf); _fsRaf = null; }
         };
@@ -735,7 +753,7 @@ function setupRoomScrollOpen() {
             const now = performance.now();
             const dy = _fsTouchY - y;
             _fsTouchY = y;
-            scroller.scrollTop += dy;
+            queueScroll(dy);
             // Track instantaneous velocity (low-pass blend so a single
             // jittery sample doesn't dominate).
             const dt = Math.max(1, now - _fsLastT);
@@ -746,6 +764,9 @@ function setupRoomScrollOpen() {
         }, { passive: true });
         floorSection.addEventListener('touchend', () => {
             _fsTouchY = null;
+            // Flush any pending scroll first so velocity-based momentum picks
+            // up from the right place.
+            if (_fsPendingDy !== 0) flushScroll();
             // Kick off momentum if the flick had any meaningful velocity.
             if (Math.abs(_fsVel) > 0.05) {
                 _fsRaf = requestAnimationFrame(() => stepMomentum(performance.now()));
@@ -2305,21 +2326,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Hover info bar — action buttons (state-aware for lock and info-toggle)
+    // Hover info bar — action buttons (state-aware for lock and info-toggle).
+    // On mobile, mouseenter/mouseleave fire back-to-back as synthesized
+    // events on tap, which would wipe the toast immediately. Use touchstart
+    // there instead (no wipe, no mouseleave race).
     const lockBtnHover = document.getElementById('lock-button');
     if (lockBtnHover) {
-        lockBtnHover.addEventListener('mouseenter', () => setHoverInfo(isDraggingLocked ? 'Unlock sample position' : 'Lock sample position'));
-        lockBtnHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        if (isMobile) {
+            lockBtnHover.addEventListener('touchstart', () => setHoverInfo(isDraggingLocked ? 'Unlock sample position' : 'Lock sample position'), { passive: true });
+        } else {
+            lockBtnHover.addEventListener('mouseenter', () => setHoverInfo(isDraggingLocked ? 'Unlock sample position' : 'Lock sample position'));
+            lockBtnHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        }
     }
     const driveKnobHover = document.getElementById('drive-knob');
     if (driveKnobHover) {
-        driveKnobHover.addEventListener('mouseenter', () => setHoverInfo('Turn to add drive'));
-        driveKnobHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        if (isMobile) {
+            driveKnobHover.addEventListener('touchstart', () => setHoverInfo('Drag up or down to add drive'), { passive: true });
+        } else {
+            driveKnobHover.addEventListener('mouseenter', () => setHoverInfo('Turn to add drive'));
+            driveKnobHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        }
     }
     const addVideoHover = document.getElementById('add-video');
     if (addVideoHover) {
-        addVideoHover.addEventListener('mouseenter', () => setHoverInfo('Add video sampler'));
-        addVideoHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        if (isMobile) {
+            addVideoHover.addEventListener('touchstart', () => setHoverInfo('Add video sampler'), { passive: true });
+        } else {
+            addVideoHover.addEventListener('mouseenter', () => setHoverInfo('Add video sampler'));
+            addVideoHover.addEventListener('mouseleave', () => setHoverInfo(''));
+        }
     }
     const infoToggleHover = document.getElementById('info-toggle');
     if (infoToggleHover) {
