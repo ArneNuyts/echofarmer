@@ -804,6 +804,11 @@ window.addEventListener('load', () => {
 (function setupWelcomeModal() {
     const modal = document.getElementById('welcome-modal');
     if (!modal) return;
+    // Mobile copy tweak: "Hover over" → "Tap" (no real hover on touch devices).
+    if (isMobile) {
+        const body = modal.querySelector('.welcome-body');
+        if (body) body.innerHTML = body.innerHTML.replace('Hover over any element', 'Tap any element');
+    }
     const closeBtn = document.getElementById('welcome-close');
     const closeImg = closeBtn && closeBtn.querySelector('img');
     let dismissed = false;
