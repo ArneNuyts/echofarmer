@@ -405,6 +405,23 @@ body {
     background: #595147;
 }
 
+/* ── Shorter-than-design-height fallback (most phones) ───────────────────── */
+/* When the viewport can't fit the full 667px card, stretch the card so its
+   top and bottom edges touch the window edges. Internal content scrolls if
+   needed. Desktop / tall viewports keep the centered fixed-size card. */
+@media (max-height: 700px) {
+    body {
+        align-items: stretch;
+        padding: 0;
+    }
+    .release-card {
+        height: 100dvh;
+        max-height: 100dvh;
+        overflow-y: auto;
+        border-radius: 0;
+    }
+}
+
 /* ── Smaller-than-iPhone-SE-width fallback ───────────────────────────────── */
 /* On viewports narrower than ~340px, scale all 250px-wide elements down to
    fit. Card width tracks viewport - 8px. */
