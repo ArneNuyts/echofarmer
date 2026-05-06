@@ -456,8 +456,8 @@ body {
    click. The button itself is transparent — the icons supply the look. */
 .release-share {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 18px;
+    right: 18px;
     width: 35px;
     height: 35px;
     padding: 0;
