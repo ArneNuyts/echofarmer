@@ -15,8 +15,8 @@
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src https://fonts.gstatic.com;
         script-src 'self' 'unsafe-inline';
-        connect-src https://emailoctopus.com;
-        form-action https://emailoctopus.com;
+        connect-src https://emailoctopus.com https://eomail5.com;
+        form-action https://emailoctopus.com https://eomail5.com;
         frame-ancestors 'none';
         base-uri 'self';">
     <!-- Don't leak the full URL to streaming services / image hosts. -->
@@ -62,8 +62,8 @@
 
             <form class="notify-form" novalidate method="post">
                 <div class="notify-row">
-                    <input type="text" name="hp" tabindex="-1" aria-hidden="true" class="notify-hp" autocomplete="off">
-                    <input type="email" name="email_address" class="notify-input"
+                    <input type="text" name="hpc4b27b6e-eb38-11e9-be00-06b4694bee2a" tabindex="-1" aria-hidden="true" class="notify-hp" autocomplete="off">
+                    <input type="email" name="field_0" class="notify-input"
                            placeholder="your@email.com" required autocomplete="email" aria-label="Email address">
                     <button type="submit" class="notify-submit">Notify me</button>
                 </div>
@@ -103,7 +103,7 @@
         // "presave:something-so-suite" so you can email this segment on
         // release day. Leave action: "" until the form is created.
         emailoctopus: {
-            action: ""
+            action: "https://eomail5.com/form/a8dd4752-4953-11f1-8664-c35404464fe0"
         },
         // Streaming links. Set preLive: null to skip a button entirely
         // before release; postLive will be filled in once DistroKid pushes

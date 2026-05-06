@@ -203,8 +203,8 @@
             }
 
             const data = new FormData(notifyForm);
-            // Honeypot must be empty
-            if (data.get('hp')) return;
+            // Honeypot must be empty (EmailOctopus uses this exact field name)
+            if (data.get('hpc4b27b6e-eb38-11e9-be00-06b4694bee2a')) return;
 
             if (submit) submit.disabled = true;
             try {
