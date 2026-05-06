@@ -77,7 +77,14 @@
     // Treat dates as ISO 8601. If no time is given, assume midnight in the
     // user's local timezone (consistent with how listeners experience the
     // drop on streaming services).
-    const releaseDate = cfg.releaseDate ? new Date(cfg.releaseDate) : null;
+    // Parse the release date. A date-only string (YYYY-MM-DD) is treated as
+    // midnight in the visitor's own local timezone — new Date("YYYY-MM-DD")
+    // would give UTC midnight instead, so we split the parts manually.
+    const releaseDate = cfg.releaseDate
+        ? (/^\d{4}-\d{2}-\d{2}$/.test(cfg.releaseDate)
+            ? (([y, m, d]) => new Date(y, m - 1, d))(cfg.releaseDate.split('-').map(Number))
+            : new Date(cfg.releaseDate))
+        : null;
     const now = () => new Date();
     const isLive = () => releaseDate && now() >= releaseDate;
 

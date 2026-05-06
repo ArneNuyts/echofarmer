@@ -106,8 +106,10 @@
         title: "something so suite",
         // ISRC for the release (kept here for reference; not used by page logic).
         isrc: "",
-        // ISO 8601 release date — Brussels timezone (CET/CEST).
-        releaseDate: "2026-05-15T00:00:00+02:00",
+        // Date-only string (YYYY-MM-DD). page.js treats this as midnight in
+        // the visitor's own local timezone, so the drop feels simultaneous
+        // globally (everyone's local midnight on this date).
+        releaseDate: "2026-05-15",
         // Cover art (relative to this index.html). Swap to actual album art
         // when available — current placeholder is the floor-table icon.
         cover: "../artwork/sweet.webp",
