@@ -30,11 +30,11 @@
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data: blob: https://i.ytimg.com;
       media-src 'self';
-      connect-src 'self' https://rest.bandsintown.com;
+      connect-src 'self' https://rest.bandsintown.com https://eomail5.com;
       frame-src https://www.youtube.com https://www.youtube-nocookie.com;
       frame-ancestors 'none';
       base-uri 'self';
-      form-action 'self';
+      form-action 'self' https://eomail5.com;
       object-src 'none';
       upgrade-insecure-requests
     ">
@@ -67,7 +67,7 @@
             <img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Close">
         </button>
         <div class="welcome-title">Welcome!</div>
-        <div class="welcome-body">Each single from my mixtape <i>Tiny Big Much</i> adds samples to this website until the sample pack is complete.<br>Not sure what's what? Hover over any element to get more information.</div>
+        <div class="welcome-body">Each new single from my mixtape <i>Tiny Big Much</i> adds samples to this website until the sample pack is complete.<br>Not sure what's what? Hover over any element to get more information.</div>
     </div>
     <!-- Mailing list modal — shown when "Subscribe to my mailing list" is clicked.
          Form action + list ID will be filled in once the EmailOctopus account is set up.
@@ -79,13 +79,14 @@
         <div class="welcome-title">Stay in the loop</div>
         <div class="welcome-body mailing-body">Get notified when new releases drop and new shows are announced.</div>
         <form id="mailing-form" class="mailing-form" novalidate
-              action="https://emailoctopus.com/lists/REPLACE_LIST_ID/members/embedded/1.3/add"
+              action="https://eomail5.com/form/a8dd4752-4953-11f1-8664-c35404464fe0"
               method="post" data-message="Thanks — you're on the list!">
             <!-- Honeypot: bots fill this; humans leave it empty. Hidden via CSS, not display:none,
-                 so screenreaders skip it but the field is still in the form submission. -->
-            <input type="text" name="hp" tabindex="-1" aria-hidden="true" class="mailing-hp">
+                 so screenreaders skip it but the field is still in the form submission. The name
+                 must match the EmailOctopus form definition exactly. -->
+            <input type="text" name="hpc4b27b6e-eb38-11e9-be00-06b4694bee2a" tabindex="-1" aria-hidden="true" class="mailing-hp">
             <div class="mailing-field">
-                <input type="email" name="email_address" id="mailing-email"
+                <input type="email" name="field_0" id="mailing-email"
                        placeholder="your@email.com" required autocomplete="email"
                        class="mailing-input">
             </div>
@@ -183,7 +184,7 @@
                     <h3 class="floor-heading">Links</h3>
                     <div class="links-section">
                         <div class="contact-link-item">
-                            <div><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">THIS HERE NOW (JUNIOR)</a></div>
+                            <div><strong>Management:</strong> <a href="mailto:junior@thisherenow.agency" class="contact-link">THIS HERE NOW (Junior)</a></div>
                             <div><strong>Booking BE &amp; NL:</strong> <a href="mailto:ilja@greenhousetalent.be" class="contact-link">Greenhouse Talent (Ilja)</a></div>
                         </div>
                         <a href="#" class="btn-bandsintown mailing-list-link links-section-sep">Subscribe to my mailing list</a>

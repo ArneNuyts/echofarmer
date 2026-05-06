@@ -3034,11 +3034,16 @@ function createVideoPad() {
     scrub.addEventListener('mouseenter', () => setHoverInfo('Drag playhead left or right to set sample start'));
     scrub.addEventListener('mouseleave', () => setHoverInfo(''));
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
+    // Implemented with pointer events + setPointerCapture so all subsequent
+    // move/up events route directly to the timeLabel — immune to the
+    // pad-drag handler that would otherwise capture the gesture.
     let timeDragY = null;
     let timeDragStart = null;
+    let timePointerId = null;
     timeLabel.addEventListener('mouseenter', () => setHoverInfo('Drag up or down (or use arrow keys) to set sample start. Hold shift for fine, shift+alt/option for ultra-fine control.'));
     timeLabel.addEventListener('mouseleave', () => setHoverInfo(''));
-    timeLabel.addEventListener('mousedown', (e) => {
+    timeLabel.addEventListener('pointerdown', (e) => {
+        // Stop the pad-drag handler from also reacting to this press.
         e.preventDefault();
         e.stopPropagation();
         timeDragY = e.clientY;
@@ -3046,12 +3051,17 @@ function createVideoPad() {
             ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
             : (videoEl.duration ? videoEl.currentTime : 0);
         timeLabel.classList.add('dragging');
-        // Hold userSeeking for the entire drag (cleared on mouseup below),
-        // not just for the 400ms cooldown of markUserSeeking().
+        // Hold userSeeking for the entire drag (cleared on pointerup below).
         userSeeking = true;
         clearTimeout(_seekClearTimer);
+        // Route all subsequent move/up events on this pointer to timeLabel,
+        // even if they leave the element.
+        try {
+            timeLabel.setPointerCapture(e.pointerId);
+            timePointerId = e.pointerId;
+        } catch(_) {}
     });
-    document.addEventListener('mousemove', (e) => {
+    timeLabel.addEventListener('pointermove', (e) => {
         if (timeDragY === null) return;
         // Read modifiers live so the user can press/release them mid-drag.
         // shift = 0.1s/px (fine), shift+alt/option = 0.01s/px (ultra-fine), default = 1s/px.
@@ -3059,7 +3069,6 @@ function createVideoPad() {
         const rate = ultra ? 0.01 : (e.shiftKey ? 0.1 : 1);
         const delta = (timeDragY - e.clientY) * rate;
         const target = timeDragStart + delta;
-        markUserSeeking();
         if (ytPlayer && ytReady) {
             try {
                 const dur = ytPlayer.getDuration();
@@ -3068,22 +3077,28 @@ function createVideoPad() {
         } else if (videoEl.duration) {
             videoEl.currentTime = Math.max(0, Math.min(videoEl.duration, target));
             scrub.value = videoEl.currentTime / videoEl.duration;
+            updateScrubTrack();
             timeLabel.textContent = `${fmt(videoEl.currentTime)} / ${fmt(videoEl.duration)}`;
         }
     });
-    document.addEventListener('mouseup', () => {
-        if (timeDragY !== null) {
-            // Update cue point so trigger snap-back goes to the new position
-            if (videoEl.duration) startScrubPos = videoEl.currentTime / videoEl.duration;
-            else if (ytPlayer && ytReady) {
-                try { const d = ytPlayer.getDuration(); if (d > 0) startScrubPos = ytPlayer.getCurrentTime() / d; } catch(_) {}
-            }
-            // Brief cooldown so the YT poll doesn't immediately overwrite our seek
-            markUserSeeking(600);
+    const endTimeDrag = (e) => {
+        if (timeDragY === null) return;
+        // Update cue point so trigger snap-back goes to the new position
+        if (videoEl.duration) startScrubPos = videoEl.currentTime / videoEl.duration;
+        else if (ytPlayer && ytReady) {
+            try { const d = ytPlayer.getDuration(); if (d > 0) startScrubPos = ytPlayer.getCurrentTime() / d; } catch(_) {}
         }
+        // Brief cooldown so the YT poll doesn't immediately overwrite our seek
+        markUserSeeking(600);
         timeDragY = null; timeDragStart = null;
         timeLabel.classList.remove('dragging');
-    });
+        if (timePointerId !== null) {
+            try { timeLabel.releasePointerCapture(timePointerId); } catch(_) {}
+            timePointerId = null;
+        }
+    };
+    timeLabel.addEventListener('pointerup', endTimeDrag);
+    timeLabel.addEventListener('pointercancel', endTimeDrag);
     timeLabel.addEventListener('touchstart', (e) => {
         timeDragY = e.touches[0].clientY;
         timeDragStart = ytPlayer && ytReady
@@ -3388,7 +3403,6 @@ document.addEventListener('dragstart', (e) => {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const action = form.getAttribute('action') || '';
-            const isPlaceholder = action.includes('REPLACE_LIST_ID');
 
             // Clear previous status
             if (statusEl) { statusEl.textContent = ''; statusEl.className = 'mailing-status'; }
@@ -3405,17 +3419,14 @@ document.addEventListener('dragstart', (e) => {
                 return;
             }
 
-            // If the action URL hasn't been filled in yet, just show a
-            // "coming soon" message so the UI doesn't feel broken during dev.
-            if (isPlaceholder) {
-                if (statusEl) statusEl.textContent = 'Mailing list coming soon — check back later!';
+            if (!action) {
                 if (submitBtn) submitBtn.disabled = false;
                 return;
             }
 
             const data = new FormData(form);
-            // Honeypot must be empty
-            if (data.get('hp')) {
+            // Honeypot must be empty (EmailOctopus uses this exact field name)
+            if (data.get('hpc4b27b6e-eb38-11e9-be00-06b4694bee2a')) {
                 if (submitBtn) submitBtn.disabled = false;
                 return;
             }

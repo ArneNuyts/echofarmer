@@ -17,28 +17,42 @@
     }
 
     // ── Responsive scaling ────────────────────────────────────────────────
-    // The card is designed at 315×667 (iPhone SE). On any viewport that
-    // can't fit those dimensions, scale the entire card uniformly so its
-    // contents keep their relative sizes/positions (no internal scrolling,
-    // no cut-off links). Cap at 1 so the design never grows on big screens.
-    // When the card's height fills the viewport, also flag that for CSS
-    // (used to drop the top/bottom borders).
+    // Two-stage fit:
+    //   1. If the viewport is shorter than the design height (667px), shrink
+    //      the cover art to free up vertical space so the rest of the layout
+    //      (form + 5 service buttons) keeps its design size.
+    //   2. After that, if the layout still doesn't fit (very small phones),
+    //      scale the entire card uniformly so nothing gets cropped.
+    // The card's width stays at the design 315px (uniformly scaled by sx).
     const DESIGN_W = 315;
     const DESIGN_H = 667;
+    const COVER_DESIGN = 250;
+    const COVER_MIN    = 120; // don't let the artwork get smaller than this
     const fitCard = () => {
         const card = document.querySelector('.release-card');
         if (!card) return;
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        // Tiny safety inset on the width axis so we don't kiss the edge.
+        // Step 1: free up vertical space by shrinking the cover (max design
+        // size 250 → as low as COVER_MIN). The amount we save is added back
+        // to the design height we need to fit.
+        const verticalDeficit = Math.max(0, DESIGN_H - vh);
+        const coverShrink = Math.min(COVER_DESIGN - COVER_MIN, verticalDeficit);
+        const coverSize = COVER_DESIGN - coverShrink;
+        const effectiveDesignH = DESIGN_H - coverShrink;
+        card.style.setProperty('--cover-size', coverSize + 'px');
+        // Step 2: uniform scale to fit what's left of the design box.
         const sx = Math.min(1, (vw - 2) / DESIGN_W);
-        const sy = Math.min(1, vh / DESIGN_H);
+        const sy = Math.min(1, vh / effectiveDesignH);
         const scale = Math.min(sx, sy);
         card.style.setProperty('--scale', scale.toFixed(4));
-        // True when height is the limiting dimension AND we're scaled down,
-        // i.e. the card visually touches the top and bottom of the viewport.
-        const fillsHeight = scale < 1 && sy <= sx;
+        // True when height was the limiting factor (card visually touches
+        // the top + bottom of the viewport — drop top/bottom borders).
+        const fillsHeight = vh <= effectiveDesignH * scale + 1;
         card.classList.toggle('fills-height', fillsHeight);
+        // Also adjust the card's effective height so it matches the shrunk
+        // layout (otherwise the bottom would have empty padding).
+        card.style.setProperty('--card-height', effectiveDesignH + 'px');
     };
     fitCard();
     window.addEventListener('resize', fitCard);
@@ -255,6 +269,51 @@
                 }
             } finally {
                 if (submit) submit.disabled = false;
+            }
+        });
+    }
+
+    // ── Share button ──────────────────────────────────────────────────────
+    // Fixed top-right floating badge. Click copies the page URL and the
+    // label flips to "Link copied" for ~2s.
+    const shareBtn = document.querySelector('.release-share');
+    if (shareBtn) {
+        const line1 = shareBtn.querySelector('.share-line1');
+        const line2 = shareBtn.querySelector('.share-line2');
+        const orig1 = line1 ? line1.textContent : 'Share';
+        const orig2 = line2 ? line2.textContent : 'page';
+        let revertTimer = null;
+        const showCopied = () => {
+            if (line1) line1.textContent = 'Link';
+            if (line2) line2.textContent = 'copied';
+            shareBtn.classList.add('copied');
+            clearTimeout(revertTimer);
+            revertTimer = setTimeout(() => {
+                if (line1) line1.textContent = orig1;
+                if (line2) line2.textContent = orig2;
+                shareBtn.classList.remove('copied');
+            }, 2000);
+        };
+        shareBtn.addEventListener('click', async () => {
+            const url = window.location.href;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url);
+                } else {
+                    // Fallback for older browsers / non-secure contexts.
+                    const ta = document.createElement('textarea');
+                    ta.value = url;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                showCopied();
+            } catch (_) {
+                // Even if clipboard write throws, give the user feedback.
+                showCopied();
             }
         });
     }
