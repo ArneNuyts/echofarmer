@@ -274,23 +274,15 @@
     }
 
     // ── Share button ──────────────────────────────────────────────────────
-    // Fixed top-right floating badge. Click copies the page URL and the
-    // label flips to "Link copied" for ~2s.
+    // Fixed top-right icon button. Click copies the page URL and the icon
+    // swaps from link.svg to link-clicked.svg (via the .copied class) for ~2s.
     const shareBtn = document.querySelector('.release-share');
     if (shareBtn) {
-        const line1 = shareBtn.querySelector('.share-line1');
-        const line2 = shareBtn.querySelector('.share-line2');
-        const orig1 = line1 ? line1.textContent : 'Share';
-        const orig2 = line2 ? line2.textContent : 'page';
         let revertTimer = null;
         const showCopied = () => {
-            if (line1) line1.textContent = 'Link';
-            if (line2) line2.textContent = 'copied';
             shareBtn.classList.add('copied');
             clearTimeout(revertTimer);
             revertTimer = setTimeout(() => {
-                if (line1) line1.textContent = orig1;
-                if (line2) line2.textContent = orig2;
                 shareBtn.classList.remove('copied');
             }, 2000);
         };
