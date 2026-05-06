@@ -142,6 +142,15 @@ let _infoFloatFrozen = false;
 // Shared z-index counter for bring-to-front on GIFs and video pads
 let _topZ = 1;
 
+// ── Analytics helper ──────────────────────────────────────────────────────
+// Fire a GoatCounter custom event. Silently no-ops if the script hasn't
+// loaded yet (e.g. ad-blocker, slow network).
+function gcEvent(path) {
+    if (window.goatcounter && window.goatcounter.count) {
+        window.goatcounter.count({ path: path });
+    }
+}
+
 // Shared Web Audio context + master chain (created lazily)
 // Graph: sources -> masterIn -> (dry) ---------------------\
 //                            \-> reverbSend -> convolver -> HPF -> highshelf -> reverbWet -/
@@ -2100,6 +2109,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const preload = new Image(); preload.src = hoverSrc;
         link.addEventListener('mouseenter', () => { img.src = hoverSrc; });
         link.addEventListener('mouseleave', () => { img.src = normalSrc; });
+        link.addEventListener('click', () => {
+            const label = (link.getAttribute('aria-label') || '').toLowerCase().replace(/\s+/g, '-');
+            gcEvent('link-click/' + label);
+        });
     });
 
     // In room mode, scrolling drives the back-wall depth (room "opens" as you scroll).
@@ -3325,7 +3338,10 @@ document.addEventListener('dragstart', (e) => {
         const row = e.target.closest('tr.release-row[data-href]');
         if (!row) return;
         const href = row.getAttribute('data-href');
-        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+        if (!href) return;
+        const title = (row.querySelector('.rt-name') || {}).textContent || href;
+        gcEvent('release-click/' + title.trim().toLowerCase().replace(/\s+/g, '-'));
+        window.open(href, '_blank', 'noopener,noreferrer');
     });
 })();
 
@@ -3478,4 +3494,21 @@ document.addEventListener('dragstart', (e) => {
         modal.style.top  = (e.touches[0].clientY - _offY) + 'px';
     }, { passive: false });
     document.addEventListener('touchend', () => { _dragging = false; });
+})();
+
+// ── GoatCounter: Bandsintown + contact email click tracking ───────────────
+(function trackMainPageLinks() {
+    // Bandsintown CTA button ("Get updated on new shows")
+    const bitBtn = document.querySelector('a.btn-bandsintown[href*="bandsintown"]');
+    if (bitBtn) {
+        bitBtn.addEventListener('click', () => gcEvent('bandsintown-shows'));
+    }
+
+    // Management + booking email links
+    document.querySelectorAll('a.contact-link[href^="mailto:"]').forEach(a => {
+        a.addEventListener('click', () => {
+            const email = a.getAttribute('href').replace('mailto:', '');
+            gcEvent('email-click/' + email);
+        });
+    });
 })();

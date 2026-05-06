@@ -10,6 +10,14 @@
 (function () {
     'use strict';
 
+    // ── Analytics helper ──────────────────────────────────────────────────
+    // Silently no-ops if GoatCounter hasn't loaded (ad-blocker etc.).
+    const gcEvent = (path) => {
+        if (window.goatcounter && window.goatcounter.count) {
+            window.goatcounter.count({ path: path });
+        }
+    };
+
     const cfg = window.RELEASE_CONFIG;
     if (!cfg) {
         console.error('[release-page] window.RELEASE_CONFIG is missing');
@@ -225,6 +233,9 @@
                 `<img class="service-icon" src="${meta.icon}" alt="" aria-hidden="true">` +
                 `<span class="service-name">${meta.label}</span>` +
                 `<span class="service-action">${live ? 'listen' : 'follow'}</span>`;
+            a.addEventListener('click', () => {
+                gcEvent('release-link/' + key + '/' + (live ? 'listen' : 'follow'));
+            });
             li.appendChild(a);
             serviceList.appendChild(li);
         });
@@ -354,6 +365,7 @@
         });
 
         shareBtn.addEventListener('click', async () => {
+            gcEvent('release-share');
             // Restart spin even if clicked mid-animation (force reflow).
             shareBtn.classList.remove('spinning');
             void shareBtn.offsetWidth;
@@ -380,6 +392,12 @@
                 showCopied();
             }
         });
+    }
+
+    // ── Back link tracking ──────────────────────────────────────────────────
+    const backLink = document.querySelector('.release-back');
+    if (backLink) {
+        backLink.addEventListener('click', () => gcEvent('release-back-to-main'));
     }
 
 })();
