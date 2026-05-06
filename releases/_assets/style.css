@@ -465,8 +465,8 @@ body {
     border: none;
     cursor: pointer;
     z-index: 6;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-    transition: transform 0.12s ease;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+    transition: transform 0.12s ease, filter 0.12s ease;
     transform-origin: center;
 }
 .release-share .share-icon {
