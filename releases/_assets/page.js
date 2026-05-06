@@ -53,6 +53,34 @@
         // Also adjust the card's effective height so it matches the shrunk
         // layout (otherwise the bottom would have empty padding).
         card.style.setProperty('--card-height', effectiveDesignH + 'px');
+
+        // ── Badge bounce region (scales with cover art) ───────────────────
+        // The CSS keyframes assume a design-space Y max of 301px (tuned for
+        // the 250px cover). When the cover shrinks by coverShrink pixels,
+        // we rewrite the keyframes so the badge stays above the notify form.
+        // All intermediate Y values are proportionally scaled from the
+        // original ratios (100/301, 240/301, 280/301).
+        const BADGE_Y_MAX_DESIGN = 301;
+        const badgeYMax = Math.round(Math.max(50, BADGE_Y_MAX_DESIGN - coverShrink));
+        const by1 = Math.round(badgeYMax * 0.332); // was 100
+        const by2 = Math.round(badgeYMax * 0.797); // was 240
+        const by3 = Math.round(badgeYMax * 0.930); // was 280
+        let badgeStyle = document.getElementById('badge-keyframes');
+        if (!badgeStyle) {
+            badgeStyle = document.createElement('style');
+            badgeStyle.id = 'badge-keyframes';
+            document.head.appendChild(badgeStyle);
+        }
+        badgeStyle.textContent = `@keyframes badge-drift {
+    0%     { transform: translate(  0px,      0px); }
+    14.9%  { transform: translate(226px, ${by1}px); }
+    28.0%  { transform: translate(140px, ${badgeYMax}px); }
+    37.2%  { transform: translate(  0px, ${by2}px); }
+    53.6%  { transform: translate(130px,      0px); }
+    71.5%  { transform: translate(226px, ${by3}px); }
+    81.5%  { transform: translate( 60px, ${badgeYMax}px); }
+    100%   { transform: translate(  0px,      0px); }
+}`;
     };
     fitCard();
     window.addEventListener('resize', fitCard);
@@ -206,6 +234,24 @@
     // Also hide the "Get notified..." label whenever the form is hidden.
     const notifyLabel = document.querySelector('.notify-label');
     const notifyForm  = document.querySelector('.notify-form');
+
+    // Prevent iOS from auto-zooming on input focus. iOS zooms when the
+    // input's computed font-size < 16px. We keep font-size at 13px (so all
+    // elements scale proportionally) and instead temporarily lock
+    // maximum-scale=1 during focus so iOS doesn't zoom, then restore it.
+    const notifyInput = document.querySelector('.notify-input');
+    if (notifyInput) {
+        const vpMeta = document.querySelector('meta[name="viewport"]');
+        if (vpMeta) {
+            notifyInput.addEventListener('focus', () => {
+                vpMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0';
+            }, { passive: true });
+            notifyInput.addEventListener('blur', () => {
+                vpMeta.content = 'width=device-width, initial-scale=1.0';
+            }, { passive: true });
+        }
+    }
+
     if (notifyForm) {
         if (isLive()) {
             // Hide pre-release form (and its label) once the track is out

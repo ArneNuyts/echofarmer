@@ -79,11 +79,12 @@ body {
 /* Bounces inside an explicit 315×330 region anchored at the top of the
    card. Inside that region the badge's outer walls are clamped to:
      X: 0 → 226   (region width 311 inside the 2px border  − 85 badge)
-     Y: 0 → 301   (region height 326 inside the 2px border − 25 badge)
-   Each keyframe lands on one of those four walls so the badge visibly
-   "bounces" — never overshoots, never stops mid-air. Keyframe % values
-   are proportional to segment length so motion stays at CONSTANT speed
-   under a linear timing function. */
+     Y: 0 → 301   (region height 326 inside the 2px border − 25 badge, at default cover size)
+   The Y max shrinks proportionally with --cover-size via JS-injected
+   keyframes (#badge-keyframes <style> tag). Each keyframe lands on one of
+   those four walls so the badge visibly "bounces" — never overshoots,
+   never stops mid-air. The CSS keyframes below are the initial/fallback
+   values (cover at full 250px). JS overwrites them immediately on load. */
 .release-badge {
     position: absolute;
     top: 0;
@@ -463,14 +464,9 @@ body {
 }
 
 /* Prevent iOS Safari from zooming the page when the email input gains focus.
-   iOS only zooms when an input's computed font-size is < 16px. We bump the
-   input to 16px on touch devices — and bump the matching "Notify me"
-   submit button too so the two visually match. The JS card-scale shrinks
-   them both proportionally for visual fidelity. */
-@media (hover: none) and (pointer: coarse) {
-    .notify-input,
-    .notify-submit { font-size: 16px; }
-}
+   We keep font-size at 13px (matching all other elements so they scale
+   proportionally) and instead suppress the auto-zoom via a viewport meta
+   update in page.js (focus → maximum-scale=1, blur → restore). */
 
 /* Inline span used in the notify-status success message to keep the title
    on a single line ("Something So Suite" never breaks across two lines). */
