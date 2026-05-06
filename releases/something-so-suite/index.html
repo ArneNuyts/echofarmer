@@ -6,36 +6,46 @@
     <title>something so suite — echofarmer</title>
     <meta name="description" content="something so suite by echofarmer — out 15/05/26. Sign up to get notified, then listen on your favorite streaming service.">
 
+    <!-- Security: limit what the page can load. fonts.googleapis.com for the
+         font CSS, fonts.gstatic.com for the font files, EmailOctopus for the
+         signup POST, plus self for everything we ship. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        img-src 'self' data:;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        script-src 'self' 'unsafe-inline';
+        connect-src https://emailoctopus.com;
+        form-action https://emailoctopus.com;
+        frame-ancestors 'none';
+        base-uri 'self';">
+    <!-- Don't leak the full URL to streaming services / image hosts. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
     <!-- Open Graph / social previews -->
     <meta property="og:type" content="music.song">
     <meta property="og:title" content="something so suite — echofarmer">
     <meta property="og:description" content="Out 15/05/26 — sign up to get notified.">
-    <meta property="og:image" content="../../gifs/pink_dolphin_release.png">
+    <meta property="og:image" content="../artwork/sweet.webp">
     <meta name="twitter:card" content="summary_large_image">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;600;700;800&display=swap" rel="stylesheet">
+    <!-- Only the weights actually used on this page: 450 regular, 700 bold,
+         and 450 italic for the email placeholder. -->
+    <link href="https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,450;0,700;1,450&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../_assets/style.css">
 </head>
 <body>
-    <div class="top-bar">
-        <a href="https://echofarmer.com" class="site-link">echofarmer.com</a>
-        <button type="button" class="share-btn">Share</button>
-    </div>
-
-    <main class="release-card">
-        <div class="release-cover">
-            <!-- Cover art src is set by page.js from RELEASE_CONFIG.cover -->
-            <img src="" alt="">
-        </div>
-
-        <div class="release-card-content">
-            <div class="release-meta">
-                <div class="release-artist"></div>
-                <h1 class="release-title"></h1>
-                <div class="release-date"></div>
+    <div class="release-frame">
+        <main class="release-card">
+            <div class="release-cover">
+                <!-- Cover art src is set by page.js from RELEASE_CONFIG.cover -->
+                <img src="" alt="">
             </div>
+
+            <h1 class="release-title"></h1>
+            <div class="release-artist"></div>
 
             <!-- Countdown until release date -->
             <div class="release-countdown" role="timer" aria-live="off">
@@ -48,10 +58,9 @@
             <!-- "Out now" hero (replaces countdown post-release) -->
             <div class="release-out-now" hidden>Out now — listen below</div>
 
-            <!-- Pre-release notify form (auto-hidden once track is live) -->
-            <form class="notify-form" novalidate method="post"
-                  data-message="Thanks — you're on the list!">
-                <div class="notify-label">Get notified the moment it drops</div>
+            <div class="notify-label">Get notified the moment it drops</div>
+
+            <form class="notify-form" novalidate method="post">
                 <div class="notify-row">
                     <input type="text" name="hp" tabindex="-1" aria-hidden="true" class="notify-hp" autocomplete="off">
                     <input type="email" name="email_address" class="notify-input"
@@ -61,10 +70,16 @@
                 <div class="notify-status" aria-live="polite"></div>
             </form>
 
-            <!-- Streaming service buttons (rendered by page.js) -->
+            <!-- Streaming service buttons (rendered by page.js, top→bottom:
+                 bandcamp, tidal, apple music, spotify, soundcloud) -->
             <ul class="service-list"></ul>
-        </div>
-    </main>
+
+            <!-- "OUT DD/MM!" floating badge — drifts around the top half of
+                 the card. Positioned at card-level so it can roam over the
+                 cover/title/countdown area, but not over the email/links. -->
+            <div class="release-badge"></div>
+        </main>
+    </div>
 
     <!-- Per-release config: edit this block when the release info changes.
          Streaming URLs come in two flavors:
@@ -76,20 +91,17 @@
     window.RELEASE_CONFIG = {
         artist: "echofarmer",
         title: "something so suite",
-        // ISRC for the release (kept here for reference; not used by the page logic).
+        // ISRC for the release (kept here for reference; not used by page logic).
         isrc: "",
         // ISO 8601 release date — Brussels timezone (CET/CEST).
-        // Adjust the +02:00 offset if needed (CEST is +02:00 from late March
-        // to late October, CET is +01:00 the rest of the year).
         releaseDate: "2026-05-15T00:00:00+02:00",
         // Cover art (relative to this index.html). Swap to actual album art
         // when available — current placeholder is the floor-table icon.
-        cover: "../../gifs/pink_dolphin_release.png",
+        cover: "../artwork/sweet.webp",
         // EmailOctopus form-action URL for THIS release. Create a separate
         // form in EmailOctopus that auto-tags subscribers with something like
         // "presave:something-so-suite" so you can email this segment on
-        // release day. Leave action: "" until the form is created — page
-        // will show "Notification signup coming soon" until then.
+        // release day. Leave action: "" until the form is created.
         emailoctopus: {
             action: ""
         },
@@ -97,28 +109,24 @@
         // before release; postLive will be filled in once DistroKid pushes
         // the track and you have per-service URLs.
         links: {
-            spotify: {
-                preLive:  "https://open.spotify.com/artist/542Nt23UmQC0tHUJxCSO5M",
+            bandcamp: {
+                preLive:  "https://echofarmer.bandcamp.com",
+                postLive: ""
+            },
+            tidal: {
+                preLive:  "https://tidal.com/artist/43987921",
                 postLive: ""
             },
             apple: {
                 preLive:  "https://music.apple.com/us/artist/echofarmer/1717770204",
                 postLive: ""
             },
-            youtube: {
-                preLive:  "https://youtube.com/@echofarmer",
-                postLive: ""
-            },
-            bandcamp: {
-                preLive:  "https://echofarmer.bandcamp.com",
+            spotify: {
+                preLive:  "https://open.spotify.com/artist/542Nt23UmQC0tHUJxCSO5M",
                 postLive: ""
             },
             soundcloud: {
                 preLive:  "https://soundcloud.com/echofarmer",
-                postLive: ""
-            },
-            tidal: {
-                preLive:  "https://tidal.com/artist/43987921",
                 postLive: ""
             }
         }

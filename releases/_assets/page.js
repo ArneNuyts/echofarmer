@@ -2,9 +2,9 @@
 /* Reads window.RELEASE_CONFIG (set inline in each release's index.html),
    renders the page, and wires up:
      • live countdown until release date
+     • "OUT DD/MM!" floating badge (auto-hidden post-release)
      • "Notify me" form (pre-release) → EmailOctopus per-release form
      • Streaming buttons (auto-swap from preLive → postLive on release day)
-     • Share button (Web Share API with clipboard fallback)
    No build step — vanilla JS, runs as a classic script. */
 
 (function () {
@@ -46,6 +46,28 @@
         const yy = String(d.getFullYear()).slice(-2);
         return `${dd}/${mm}/${yy}`;
     };
+    // Short DD/MM for the floating badge ("OUT 15/05!")
+    const fmtDateShort = (d) => {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        return `${dd}/${mm}`;
+    };
+
+    // Floating "OUT DD/MM!" badge — visible only pre-release
+    const badgeEl = document.querySelector('.release-badge');
+    if (badgeEl && releaseDate) {
+        if (isLive()) {
+            badgeEl.hidden = true;
+        } else {
+            badgeEl.textContent = `OUT ${fmtDateShort(releaseDate)}!`;
+            // Randomize starting position by offsetting the animation start
+            // somewhere along its 36-second loop. Negative animation-delay
+            // jumps the badge "ahead" in the keyframe path while keeping
+            // motion continuous from frame 1.
+            badgeEl.style.animationDelay = `-${(Math.random() * 36).toFixed(2)}s`;
+        }
+    }
+
     const dateLabel = document.querySelector('.release-date');
     if (dateLabel && releaseDate) {
         if (isLive()) {
@@ -104,8 +126,9 @@
 
     const serviceList = document.querySelector('.service-list');
     if (serviceList && cfg.links) {
-        // Render in a fixed order so the layout is predictable across releases
-        const order = ['spotify', 'apple', 'youtube', 'bandcamp', 'soundcloud', 'tidal'];
+        // DOM order top→bottom: bandcamp, tidal, apple, spotify, soundcloud
+        // (per design — soundcloud sits at the bottom of the card).
+        const order = ['bandcamp', 'tidal', 'apple', 'spotify', 'soundcloud'];
         const live = isLive();
         order.forEach((key) => {
             const meta = SERVICES[key];
@@ -123,32 +146,29 @@
             a.rel = 'noopener noreferrer';
             a.innerHTML =
                 `<img class="service-icon" src="${meta.icon}" alt="" aria-hidden="true">` +
-                `<span class="service-name">${live ? 'Listen on ' : 'Follow on '}${meta.label}</span>` +
-                `<span class="service-arrow" aria-hidden="true">→</span>`;
+                `<span class="service-name">${meta.label}</span>` +
+                `<span class="service-action">${live ? 'listen' : 'follow'}</span>`;
             li.appendChild(a);
             serviceList.appendChild(li);
         });
     }
 
     // ── Notify form (pre-release only) ────────────────────────────────────
-    const notifyForm = document.querySelector('.notify-form');
+    // Also hide the "Get notified..." label whenever the form is hidden.
+    const notifyLabel = document.querySelector('.notify-label');
+    const notifyForm  = document.querySelector('.notify-form');
     if (notifyForm) {
         if (isLive()) {
-            // Hide pre-release form entirely once the track is out
+            // Hide pre-release form (and its label) once the track is out
             notifyForm.hidden = true;
+            if (notifyLabel) notifyLabel.hidden = true;
         } else if (cfg.emailoctopus && cfg.emailoctopus.action) {
             notifyForm.setAttribute('action', cfg.emailoctopus.action);
-            // Form's submit handler (below) will manage everything else.
-        } else {
-            // No EmailOctopus form configured yet — show a friendly message
-            // and disable submit so the form doesn't look broken.
-            const status = notifyForm.querySelector('.notify-status');
-            const submit = notifyForm.querySelector('.notify-submit');
-            const input  = notifyForm.querySelector('.notify-input');
-            if (status) status.textContent = 'Notification signup coming soon.';
-            if (submit) submit.disabled = true;
-            if (input)  input.disabled  = true;
+            // Submit handler (below) takes it from here.
         }
+        // If no action is set yet, the form stays visible but submit will
+        // no-op (handler returns early). No on-screen "coming soon" text.
+
 
         // Custom validation tooltip (form is novalidate to suppress browser bubble)
         let _tooltip = null;
@@ -208,35 +228,4 @@
         });
     }
 
-    // ── Share button ──────────────────────────────────────────────────────
-    const shareBtn = document.querySelector('.share-btn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', async () => {
-            const shareData = {
-                title: `${cfg.title} — ${cfg.artist}`,
-                text: isLive()
-                    ? `${cfg.title} by ${cfg.artist} is out now`
-                    : `${cfg.title} by ${cfg.artist} — out ${fmtDate(releaseDate)}`,
-                url: window.location.href
-            };
-            // Native share sheet on mobile / supported desktop browsers
-            if (navigator.share) {
-                try {
-                    await navigator.share(shareData);
-                    return;
-                } catch (_) { /* user cancelled — fall through to clipboard */ }
-            }
-            // Fallback: copy URL to clipboard
-            try {
-                await navigator.clipboard.writeText(window.location.href);
-                const original = shareBtn.textContent;
-                shareBtn.textContent = 'Link copied';
-                shareBtn.classList.add('copied');
-                setTimeout(() => {
-                    shareBtn.textContent = original;
-                    shareBtn.classList.remove('copied');
-                }, 1800);
-            } catch (_) { /* clipboard blocked — silent */ }
-        });
-    }
 })();
