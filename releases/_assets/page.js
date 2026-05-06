@@ -16,6 +16,34 @@
         return;
     }
 
+    // ── Responsive scaling ────────────────────────────────────────────────
+    // The card is designed at 315×667 (iPhone SE). On any viewport that
+    // can't fit those dimensions, scale the entire card uniformly so its
+    // contents keep their relative sizes/positions (no internal scrolling,
+    // no cut-off links). Cap at 1 so the design never grows on big screens.
+    // When the card's height fills the viewport, also flag that for CSS
+    // (used to drop the top/bottom borders).
+    const DESIGN_W = 315;
+    const DESIGN_H = 667;
+    const fitCard = () => {
+        const card = document.querySelector('.release-card');
+        if (!card) return;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // Tiny safety inset on the width axis so we don't kiss the edge.
+        const sx = Math.min(1, (vw - 2) / DESIGN_W);
+        const sy = Math.min(1, vh / DESIGN_H);
+        const scale = Math.min(sx, sy);
+        card.style.setProperty('--scale', scale.toFixed(4));
+        // True when height is the limiting dimension AND we're scaled down,
+        // i.e. the card visually touches the top and bottom of the viewport.
+        const fillsHeight = scale < 1 && sy <= sx;
+        card.classList.toggle('fills-height', fillsHeight);
+    };
+    fitCard();
+    window.addEventListener('resize', fitCard);
+    window.addEventListener('orientationchange', fitCard);
+
     // ── Static text fields ────────────────────────────────────────────────
     const setText = (sel, txt) => {
         const el = document.querySelector(sel);
@@ -213,7 +241,10 @@
                 // resolved promise OR network-level error as success.
                 await fetch(action, { method: 'POST', body: data, mode: 'no-cors' });
                 if (status) {
-                    status.textContent = `Thanks — you'll get an email when ${cfg.title} drops.`;
+                    // Title-case the configured title and keep it on one line
+                    // (no awkward mid-title line break in the message).
+                    const titleCased = (cfg.title || '').replace(/\b\w/g, c => c.toUpperCase());
+                    status.innerHTML = `Thanks! You\u2019ll get an email when <span class="nowrap">${titleCased}</span> drops!`;
                     status.classList.add('success');
                 }
                 notifyForm.reset();

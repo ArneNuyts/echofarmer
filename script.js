@@ -108,6 +108,24 @@ if (VIEW_MODE === 'flat') {
 // Lock state for dragging
 let isDraggingLocked = false;
 
+// True while focus is in a text-entry field (mailing-list email, video URL,
+// any other input/textarea/contentEditable). Used to gate global keydown
+// handlers so typing letters/numbers doesn't also trigger sample playback
+// or the video key-map.
+function isTypingInForm() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'TEXTAREA') return true;
+    if (tag === 'INPUT') {
+        // Buttons and ranges shouldn't count — only real text-entry inputs.
+        const t = (el.getAttribute('type') || 'text').toLowerCase();
+        return ['text','email','search','password','tel','url','number'].includes(t);
+    }
+    if (el.isContentEditable) return true;
+    return false;
+}
+
 // Info-float toggle state (default on, persisted on desktop only)
 // On mobile we always default to on (toasts) regardless of stored state.
 let infoFloatEnabled = isMobile ? true : (() => { try { return localStorage.getItem('infoFloat') !== 'false'; } catch(e) { return true; } })();
@@ -1084,6 +1102,7 @@ class GifSampler {
         // actually produces on the visitor's layout. Runs continuously so
         // late-arriving presses also refine the labels.
         document.addEventListener('keydown', (e) => {
+            if (isTypingInForm()) return;
             const i = this.triggerCodes.indexOf(e.code);
             if (i === -1) return;
             // Only single printable characters; skip Dead, Shift, etc.
@@ -1150,6 +1169,7 @@ class GifSampler {
 
     setupKeyboardListeners() {
         document.addEventListener('keydown', (e) => {
+            if (isTypingInForm()) return;
             const index = this.triggerCodes.indexOf(e.code);
             if (index !== -1 && index < this.gifs.length) {
                 this.activateGif(this.gifs[index]);
@@ -2992,6 +3012,25 @@ function createVideoPad() {
             videoEl.currentTime = scrub.value * videoEl.duration;
         }
     });
+    // Hold userSeeking for the entire pointer-down lifetime of a scrub drag,
+    // independent of whether `input` events keep firing. Without this, slow
+    // drags (or pauses mid-drag) let the 400ms cooldown expire and the YT
+    // poll yanks the playhead back, making dragging feel inconsistent.
+    let _scrubHeld = false;
+    scrub.addEventListener('pointerdown', () => {
+        _scrubHeld = true;
+        userSeeking = true;
+        clearTimeout(_seekClearTimer);
+    });
+    const _scrubRelease = () => {
+        if (!_scrubHeld) return;
+        _scrubHeld = false;
+        // Update the cue position so the next trigger snap-back goes here.
+        startScrubPos = parseFloat(scrub.value);
+        markUserSeeking(600); // brief cooldown so the YT poll doesn't immediately overwrite
+    };
+    document.addEventListener('pointerup', _scrubRelease);
+    document.addEventListener('pointercancel', _scrubRelease);
     scrub.addEventListener('mouseenter', () => setHoverInfo('Drag playhead left or right to set sample start'));
     scrub.addEventListener('mouseleave', () => setHoverInfo(''));
     // Drag up/down on timecode = per-second seek (1px = 1s, shift = 0.1s/px)
@@ -3007,6 +3046,10 @@ function createVideoPad() {
             ? (() => { try { return ytPlayer.getCurrentTime(); } catch(_) { return 0; } })()
             : (videoEl.duration ? videoEl.currentTime : 0);
         timeLabel.classList.add('dragging');
+        // Hold userSeeking for the entire drag (cleared on mouseup below),
+        // not just for the 400ms cooldown of markUserSeeking().
+        userSeeking = true;
+        clearTimeout(_seekClearTimer);
     });
     document.addEventListener('mousemove', (e) => {
         if (timeDragY === null) return;
@@ -3035,6 +3078,8 @@ function createVideoPad() {
             else if (ytPlayer && ytReady) {
                 try { const d = ytPlayer.getDuration(); if (d > 0) startScrubPos = ytPlayer.getCurrentTime() / d; } catch(_) {}
             }
+            // Brief cooldown so the YT poll doesn't immediately overwrite our seek
+            markUserSeeking(600);
         }
         timeDragY = null; timeDragStart = null;
         timeLabel.classList.remove('dragging');
@@ -3110,6 +3155,9 @@ function createVideoPad() {
             }
             e.preventDefault(); e.stopPropagation(); return;
         }
+        // Don't react to typed characters when the user is filling in a form
+        // (mailing list, etc.) — otherwise typing letters fires the mapped key.
+        if (isTypingInForm()) return;
         if (keyBinding && document.activeElement !== urlInput && e.key === keyBinding && !keyHeld) {
             keyHeld = true;
             startPlay(); e.preventDefault();

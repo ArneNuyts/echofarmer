@@ -46,7 +46,6 @@ body {
     position: relative;
     width: 315px;
     height: 667px;
-    max-width: calc(100vw - 8px);
     background: #dfdcd8;
     border: 2px solid #595147;
     border-radius: 5px;
@@ -405,34 +404,46 @@ body {
     background: #595147;
 }
 
-/* ── Shorter-than-design-height fallback (most phones) ───────────────────── */
-/* When the viewport can't fit the full 667px card, stretch the card so its
-   top and bottom edges touch the window edges. Internal content scrolls if
-   needed. Desktop / tall viewports keep the centered fixed-size card. */
-@media (max-height: 700px) {
-    body {
-        align-items: stretch;
-        padding: 0;
-    }
-    .release-card {
-        height: 100dvh;
-        max-height: 100dvh;
-        overflow-y: auto;
-        border-radius: 0;
-    }
+/* ── Responsive scaling ──────────────────────────────────────────────────── */
+/* The card is built at a fixed 315×667 design size. JS computes a uniform
+   scale factor (--scale) and we apply it via transform so every element
+   keeps its exact relative size and position, no matter the viewport.
+   transform-origin: top center → the card grows downward from a centered
+   anchor at the top of its layout box.
+
+   When the card's HEIGHT becomes the limiting axis, JS adds .fills-height
+   so the top/bottom borders vanish (the card visually touches the top and
+   bottom of the browser window). */
+.release-card {
+    --scale: 1;
+    /* Anchor at viewport center; scale uniformly. Using position: fixed
+       means the scale transform never affects document flow, so we don't
+       need overflow: hidden on body and the card is always visually
+       centered, no matter the scale factor. */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(var(--scale));
+    transform-origin: center center;
+}
+.release-card.fills-height {
+    border-top: none;
+    border-bottom: none;
+    border-radius: 0;
 }
 
-/* ── Smaller-than-iPhone-SE-width fallback ───────────────────────────────── */
-/* On viewports narrower than ~340px, scale all 250px-wide elements down to
-   fit. Card width tracks viewport - 8px. */
-@media (max-width: 340px) {
-    .release-card { padding: 24px 20px; }
-    .release-cover,
-    .release-countdown,
-    .release-out-now,
-    .notify-form,
-    .service-list,
-    .service-link { width: 100%; }
-    .release-cover { height: auto; aspect-ratio: 1/1; }
-    .notify-input { width: calc(100% - 77.5px); }
+/* Prevent iOS Safari from zooming the page when the email input gains focus.
+   iOS only zooms when an input's computed font-size is < 16px. We bump it
+   to 16px on touch devices; the JS scale transform shrinks it back so the
+   visual design is preserved. */
+@media (hover: none) and (pointer: coarse) {
+    .notify-input { font-size: 16px; }
 }
+
+/* Inline span used in the notify-status success message to keep the title
+   on a single line ("Something So Suite" never breaks across two lines). */
+.nowrap { white-space: nowrap; }
+
+/* (Smaller-than-iPhone-SE-width fallback removed: the JS scale transform
+   now handles every viewport uniformly — the 315×667 design is preserved
+   and only its visual size changes.) */
