@@ -254,12 +254,18 @@
                 // so a successful POST throws a TypeError. Treat any
                 // resolved promise OR network-level error as success.
                 await fetch(action, { method: 'POST', body: data, mode: 'no-cors' });
-                if (status) {
-                    // Title-case the configured title and keep it on one line
-                    // (no awkward mid-title line break in the message).
-                    const titleCased = (cfg.title || '').replace(/\b\w/g, c => c.toUpperCase());
-                    status.innerHTML = `Thanks! You\u2019ll get an email when <span class="nowrap">${titleCased}</span> drops!`;
-                    status.classList.add('success');
+                // Show overlay over countdown + notify-label for 3.5s
+                const pop = document.querySelector('.notify-success-pop');
+                if (pop) {
+                    pop.textContent = "Thanks! We sent you a confirmation email. Check your junk folder if you can't find it.";
+                    const t = countdownEl ? countdownEl.offsetTop : 0;
+                    const labelBottom = notifyLabel
+                        ? notifyLabel.offsetTop + notifyLabel.offsetHeight
+                        : t + 70;
+                    pop.style.top    = t + 'px';
+                    pop.style.height = (labelBottom - t) + 'px';
+                    pop.classList.add('visible');
+                    setTimeout(() => pop.classList.remove('visible'), 15000);
                 }
                 notifyForm.reset();
             } catch (_) {
@@ -274,8 +280,9 @@
     }
 
     // ── Share button ──────────────────────────────────────────────────────
-    // Fixed top-right icon button. Click copies the page URL and the icon
-    // swaps from link.svg to link-clicked.svg (via the .copied class) for ~2s.
+    // Fixed top-right icon button. Click triggers a one-shot spin animation,
+    // copies the page URL, and the icon swaps from link.svg to
+    // link-clicked.svg (via the .copied class) for ~800ms.
     const shareBtn = document.querySelector('.release-share');
     if (shareBtn) {
         let revertTimer = null;
@@ -284,9 +291,21 @@
             clearTimeout(revertTimer);
             revertTimer = setTimeout(() => {
                 shareBtn.classList.remove('copied');
-            }, 2000);
+            }, 800);
         };
+
+        // Remove the .spinning class when the rotation finishes so it can
+        // be re-triggered on the next click.
+        shareBtn.addEventListener('animationend', () => {
+            shareBtn.classList.remove('spinning');
+        });
+
         shareBtn.addEventListener('click', async () => {
+            // Restart spin even if clicked mid-animation (force reflow).
+            shareBtn.classList.remove('spinning');
+            void shareBtn.offsetWidth;
+            shareBtn.classList.add('spinning');
+
             const url = window.location.href;
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {

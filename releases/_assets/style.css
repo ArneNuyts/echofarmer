@@ -76,10 +76,10 @@ body {
 }
 
 /* ── Floating "OUT 15/05!" badge (85×25) ────────────────────────────────── */
-/* Bounces inside an explicit 315×373 region anchored at the top of the
+/* Bounces inside an explicit 315×330 region anchored at the top of the
    card. Inside that region the badge's outer walls are clamped to:
      X: 0 → 226   (region width 311 inside the 2px border  − 85 badge)
-     Y: 0 → 348   (region height 373 inside the 2px border − 25 badge)
+     Y: 0 → 301   (region height 326 inside the 2px border − 25 badge)
    Each keyframe lands on one of those four walls so the badge visibly
    "bounces" — never overshoots, never stops mid-air. Keyframe % values
    are proportional to segment length so motion stays at CONSTANT speed
@@ -109,24 +109,24 @@ body {
 }
 .release-badge[hidden] { display: none; }
 
-/* Path (in order, each point sits on a wall of the 226×348 box):
+/* Path (in order, each point sits on a wall of the 226×301 box):
      A (0,   0)   top-left corner
      B (226, 100) right wall
-     C (140, 348) bottom wall
+     C (140, 301) bottom wall
      D (0,   240) left wall
      E (130, 0)   top wall
      F (226, 280) right wall
-     G (60,  348) bottom wall
+     G (60,  301) bottom wall
      ↩ back to A
-   Segment lengths → percentages: 13.8 / 28.5 / 38.4 / 53.7 / 70.2 / 80.2 / 100. */
+   Segment lengths → percentages: 14.9 / 28.0 / 37.2 / 53.6 / 71.5 / 81.5 / 100. */
 @keyframes badge-drift {
     0%     { transform: translate(  0px,   0px); }
-    13.8%  { transform: translate(226px, 100px); }
-    28.5%  { transform: translate(140px, 348px); }
-    38.4%  { transform: translate(  0px, 240px); }
-    53.7%  { transform: translate(130px,   0px); }
-    70.2%  { transform: translate(226px, 280px); }
-    80.2%  { transform: translate( 60px, 348px); }
+    14.9%  { transform: translate(226px, 100px); }
+    28.0%  { transform: translate(140px, 301px); }
+    37.2%  { transform: translate(  0px, 240px); }
+    53.6%  { transform: translate(130px,   0px); }
+    71.5%  { transform: translate(226px, 280px); }
+    81.5%  { transform: translate( 60px, 301px); }
     100%   { transform: translate(  0px,   0px); }
 }
 
@@ -206,7 +206,7 @@ body {
 
 /* ── Notify form ─────────────────────────────────────────────────────────── */
 .notify-label {
-    margin-top: 10px;
+    margin-top: 12px;
     font-size: 13px;
     font-weight: 700;
     color: #4d453d;
@@ -299,6 +299,31 @@ body {
 .notify-status:empty { display: none; }
 .notify-status.error { color: #b04040; }
 .notify-status.success { font-weight: 700; }
+
+/* Success pop-up: absolutely overlays the countdown + notify-label area */
+.notify-success-pop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: #dfdcd8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4d453d;
+    padding: 8px 32.5px;
+    z-index: 7;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+    line-height: 1.3;
+}
+.notify-success-pop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
 
 /* Custom validation tooltip */
 .notify-tooltip {
@@ -482,6 +507,14 @@ body {
 .release-share.copied .share-icon-default { opacity: 0; }
 .release-share.copied .share-icon-copied  { opacity: 1; }
 .release-share:hover { transform: scale(1.08); }
+
+@keyframes share-spin {
+    from { rotate: 0deg; }
+    to   { rotate: 360deg; }
+}
+.release-share.spinning {
+    animation: share-spin 0.65s ease-in-out;
+}
 
 /* ── Back-to-main-site link (bottom of the card, left-aligned, no box) ─── */
 .release-back {
