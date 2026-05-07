@@ -1752,6 +1752,13 @@ body.room-mode #gif-container {
         transform: scale(0.87);
         transform-origin: center;
     }
+    /* The blue drive-amount indicator (an inline <svg> appended by JS) sits
+       on top of the dial at full container size. Scale it by the same 0.87
+       so its ring stays concentric with the visually-shrunk dial. */
+    #drive-knob > svg {
+        transform: scale(0.87);
+        transform-origin: center;
+    }
     /* iOS zooms in on any input with font-size < 16px. Fix by using 16px as
        the actual font-size and scaling the element down to appear as the
        original 8px design size (16px × 0.5 = 8px). The input shrinks visually
