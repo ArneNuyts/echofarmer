@@ -182,6 +182,22 @@ function getAudioContext() {
 // decodeAudioData works on a suspended AudioContext, so loading can start
 // immediately (before the first user gesture).
 const _bufferCache = new Map(); // src -> AudioBuffer | null
+
+// Collect every sample src declared in samplerConfig so we can pre-decode
+// them all on the first user gesture (after audio unlock). Called once.
+function _prefetchAllSampleBuffers() {
+    if (_prefetchAllSampleBuffers._done) return;
+    _prefetchAllSampleBuffers._done = true;
+    const srcs = [];
+    for (const cfg of samplerConfig) {
+        if (cfg.audio) srcs.push(cfg.audio);
+        if (cfg.audioList) for (const s of cfg.audioList) srcs.push(s);
+    }
+    // Stagger slightly so the first sample (likely needed first) wins the
+    // network race; rest follow without saturating the connection.
+    srcs.forEach((src, i) => setTimeout(() => _loadBuffer(src), i * 30));
+}
+
 function _loadBuffer(src) {
     if (_bufferCache.has(src)) return Promise.resolve(_bufferCache.get(src));
     // Start loading immediately; store the promise so parallel calls share it.
@@ -1257,6 +1273,11 @@ class GifSampler {
                 } catch (_) {}
                 startSilentVideo();
                 _audioUnlocked = true;
+                // Now that the user has interacted, fetch + decode every
+                // sample buffer in the background. Doing this earlier would
+                // block critical-path resources (HTML/CSS/JS/font) on slow
+                // mobile connections and balloon LCP.
+                _prefetchAllSampleBuffers();
                 document.removeEventListener('click', tryUnlockAudio, true);
                 document.removeEventListener('touchstart', tryUnlockAudio, true);
                 document.removeEventListener('touchend', tryUnlockAudio, true);
@@ -1612,7 +1633,9 @@ class GifSampler {
                 } catch (e) {}
             }
             // Pre-decode in the background for zero-latency playback via AudioBufferSourceNode.
-            _loadBuffer(src);
+            // NOTE: deferred until the first user gesture (see _prefetchAllSampleBuffers
+            // in the audio-unlock handler) so audio doesn't compete with critical-path
+            // resources during page load.
             return a;
         });
         const audio = audioPool[0];
