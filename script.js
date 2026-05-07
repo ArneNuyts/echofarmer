@@ -697,17 +697,53 @@ function setupRoomScrollOpen() {
             e.preventDefault();
         }, { passive: false });
 
-        // Forward touch-scroll from gif container to the scroller.
+        // Forward touch-scroll from gif container to the scroller, with
+        // iOS-style momentum so letting go after a flick doesn't hard-stop.
         // Skip touches that started on (or are over) a draggable element —
         // otherwise dragging a character or video pad also scrolls the room.
         let _gcTouchY = null;
+        let _gcLastY = 0;
+        let _gcLastT = 0;
+        let _gcVel = 0;       // px / ms
+        let _gcRaf = null;
+        let _gcPendingDy = 0;
+        let _gcFlushScheduled = false;
         const _gcSkipSel = '.gif-item, .video-pad';
+        const _gcFlush = () => {
+            _gcFlushScheduled = false;
+            if (_gcPendingDy !== 0) {
+                scroller.scrollTop += _gcPendingDy;
+                _gcPendingDy = 0;
+            }
+        };
+        const _gcQueue = (dy) => {
+            _gcPendingDy += dy;
+            if (_gcFlushScheduled) return;
+            _gcFlushScheduled = true;
+            requestAnimationFrame(_gcFlush);
+        };
+        const _gcCancelMomentum = () => {
+            if (_gcRaf !== null) { cancelAnimationFrame(_gcRaf); _gcRaf = null; }
+        };
+        const _gcStepMomentum = (last) => {
+            const now = performance.now();
+            const dt = Math.min(now - last, 32);
+            const decay = Math.pow(0.95, dt);
+            _gcVel *= decay;
+            scroller.scrollTop += _gcVel * dt;
+            if (Math.abs(_gcVel) < 0.02) { _gcRaf = null; return; }
+            _gcRaf = requestAnimationFrame(() => _gcStepMomentum(now));
+        };
         gifContainer.addEventListener('touchstart', (e) => {
+            _gcCancelMomentum();
             if (e.target && e.target.closest && e.target.closest(_gcSkipSel)) {
                 _gcTouchY = null;
                 return;
             }
             _gcTouchY = e.touches[0].clientY;
+            _gcLastY = _gcTouchY;
+            _gcLastT = performance.now();
+            _gcVel = 0;
         }, { passive: true });
         gifContainer.addEventListener('touchmove', (e) => {
             if (_gcTouchY === null) return;
@@ -715,11 +751,25 @@ function setupRoomScrollOpen() {
                 _gcTouchY = null;
                 return;
             }
-            const dy = _gcTouchY - e.touches[0].clientY;
-            _gcTouchY = e.touches[0].clientY;
-            scroller.scrollTop += dy;
+            const y = e.touches[0].clientY;
+            const now = performance.now();
+            const dy = _gcTouchY - y;
+            _gcTouchY = y;
+            _gcQueue(dy);
+            const dt = Math.max(1, now - _gcLastT);
+            const inst = (_gcLastY - y) / dt;
+            _gcVel = _gcVel * 0.6 + inst * 0.4;
+            _gcLastY = y;
+            _gcLastT = now;
         }, { passive: true });
-        gifContainer.addEventListener('touchend', () => { _gcTouchY = null; }, { passive: true });
+        gifContainer.addEventListener('touchend', () => {
+            _gcTouchY = null;
+            if (_gcPendingDy !== 0) _gcFlush();
+            if (Math.abs(_gcVel) > 0.05) {
+                _gcRaf = requestAnimationFrame(() => _gcStepMomentum(performance.now()));
+            }
+        }, { passive: true });
+        gifContainer.addEventListener('touchcancel', () => { _gcTouchY = null; }, { passive: true });
     }
 
     // Forward touch-scroll from the floor section to the scroller.
@@ -1142,7 +1192,50 @@ class GifSampler {
         // is the canonical iOS "web-audio unlock" trick that fully wakes the
         // pipeline; without it, ctx.resume() sometimes succeeds but later
         // start() calls still produce no sound until the user interacts again.
+        //
+        // iOS silent-switch override: by default, Web Audio (and <audio>) is
+        // routed through the "Ambient" audio session, which the hardware mute
+        // switch silences. Playing a non-muted <video> with an audio track
+        // (playsInline) flips the page's session to "MoviePlayback", which
+        // the silent switch ignores. We start a tiny looped silent.mp4 on
+        // the first gesture so taps and reverb are audible even with the
+        // ringer off (volume must still be > 0).
         let _audioUnlocked = false;
+        let _silentVid = null;
+        const startSilentVideo = () => {
+            if (_silentVid) return;
+            try {
+                const v = document.createElement('video');
+                v.src = 'audio/silent.mp4';
+                v.loop = true;
+                v.playsInline = true;
+                v.setAttribute('playsinline', '');
+                v.setAttribute('webkit-playsinline', '');
+                v.setAttribute('x-webkit-airplay', 'deny');
+                v.preload = 'auto';
+                v.controls = false;
+                v.disableRemotePlayback = true;
+                // Keep it audibly silent but NOT muted (muted would defeat
+                // the audio-session switch). The mp4 itself contains silence.
+                v.muted = false;
+                v.volume = 1;
+                // Hide it without `display:none` (some browsers won't play
+                // hidden-display media).
+                v.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
+                document.body.appendChild(v);
+                _silentVid = v;
+                const playP = v.play();
+                if (playP && playP.catch) playP.catch(() => {});
+                // If the page is hidden then shown again, iOS may pause it —
+                // resume so the audio session stays in "playback" mode.
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && _silentVid && _silentVid.paused) {
+                        const p = _silentVid.play();
+                        if (p && p.catch) p.catch(() => {});
+                    }
+                });
+            } catch (_) {}
+        };
         const tryUnlockAudio = () => {
             if (_audioUnlocked) return;
             const ctx = getAudioContext();
@@ -1155,6 +1248,7 @@ class GifSampler {
                     src.connect(ctx.destination);
                     src.start(0);
                 } catch (_) {}
+                startSilentVideo();
                 _audioUnlocked = true;
                 document.removeEventListener('click', tryUnlockAudio, true);
                 document.removeEventListener('touchstart', tryUnlockAudio, true);

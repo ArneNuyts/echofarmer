@@ -349,6 +349,29 @@
     // link-clicked.svg (via the .copied class) for ~800ms.
     const shareBtn = document.querySelector('.release-share');
     if (shareBtn) {
+        // "Link copied" toast — created lazily on first click and reused.
+        let toastEl = null;
+        let toastHideTimer = null;
+        const showToast = () => {
+            if (!toastEl) {
+                toastEl = document.createElement('div');
+                toastEl.className = 'release-toast';
+                toastEl.setAttribute('role', 'status');
+                toastEl.setAttribute('aria-live', 'polite');
+                toastEl.textContent = 'link copied';
+                document.body.appendChild(toastEl);
+            }
+            // Force reflow so re-adding .visible restarts the transition
+            // when the user clicks again before the previous toast hides.
+            toastEl.classList.remove('visible');
+            void toastEl.offsetWidth;
+            toastEl.classList.add('visible');
+            clearTimeout(toastHideTimer);
+            toastHideTimer = setTimeout(() => {
+                toastEl.classList.remove('visible');
+            }, 1600);
+        };
+
         let revertTimer = null;
         const showCopied = () => {
             shareBtn.classList.add('copied');
@@ -356,6 +379,7 @@
             revertTimer = setTimeout(() => {
                 shareBtn.classList.remove('copied');
             }, 800);
+            showToast();
         };
 
         // Remove the .spinning class when the rotation finishes so it can

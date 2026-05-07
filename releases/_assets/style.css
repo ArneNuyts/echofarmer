@@ -512,6 +512,31 @@ body {
     animation: share-spin 0.65s ease-in-out;
 }
 
+/* "link copied" toast — appears just below the share button, fades out. */
+.release-toast {
+    position: fixed;
+    top: 60px;
+    right: 18px;
+    padding: 7px 12px;
+    background: rgba(77, 69, 61, 0.92);
+    color: #f4f1ec;
+    font-family: "Geist", sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 7;
+}
+.release-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 /* ── Back-to-main-site link (bottom of the card, left-aligned, no box) ─── */
 .release-back {
     margin-top: auto;
