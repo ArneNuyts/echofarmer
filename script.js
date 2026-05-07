@@ -2252,10 +2252,15 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => setupRoomScrollOpen());
     }
 
-    // Reveal page now that classes and layout are settled — prevents flash on load
+    // Reveal the 3D room area now that classes, layout and the gif container
+    // moves are settled — prevents flash on load. Only #frame-inner is
+    // hidden during init; the rest of the UI is visible from first paint.
     requestAnimationFrame(() => {
-        document.body.style.transition = 'opacity 0.15s';
-        document.body.style.opacity = '1';
+        const fi = document.getElementById('frame-inner');
+        if (fi) {
+            fi.style.transition = 'opacity 0.15s';
+            fi.style.opacity = '1';
+        }
     });
 
     // Forward wheel events from anywhere on the page to the scroller

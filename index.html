@@ -48,7 +48,12 @@
     <meta name="format-detection" content="telephone=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;600;700;800&display=swap" rel="stylesheet">
+    <!-- Warm up the TLS connection to YouTube + Bandsintown so the first
+         video embed / shows-feed request doesn't pay DNS+TLS cost. -->
+    <link rel="preconnect" href="https://www.youtube.com">
+    <link rel="preconnect" href="https://i.ytimg.com">
+    <link rel="preconnect" href="https://rest.bandsintown.com">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 
     <!-- Tab icon (favicon). -->
@@ -90,16 +95,19 @@
     }
     </script>
     <!--
-      Preload the animated WebP gif assets so the browser starts fetching
-      them before script.js parses, eliminates the first-activation network
-      wait, and lets the pre-warm pool decode immediately on init.
+      Hint the animated WebP gif assets at low priority so the browser can
+      grab them in idle time after critical resources, without competing
+      with HTML/CSS/font on slow mobile connections. The pre-warm pool in
+      script.js will pick them up from cache.
     -->
-    <link rel="preload" as="image" href="gifs/blue_dolphin.webp" type="image/webp">
-    <link rel="preload" as="image" href="gifs/pink_dolphin.webp" type="image/webp">
-    <link rel="preload" as="image" href="gifs/wolk-1.webp" type="image/webp">
-    <link rel="preload" as="image" href="gifs/wolk-2.webp" type="image/webp">
-    <link rel="preload" as="image" href="gifs/something-bw.webp" type="image/webp">
-    <style>body { opacity: 0; }</style>
+    <link rel="prefetch" as="image" href="gifs/blue_dolphin.webp" type="image/webp">
+    <link rel="prefetch" as="image" href="gifs/pink_dolphin.webp" type="image/webp">
+    <link rel="prefetch" as="image" href="gifs/wolk-1.webp" type="image/webp">
+    <link rel="prefetch" as="image" href="gifs/wolk-2.webp" type="image/webp">
+    <!-- Only the 3D room area is hidden during JS init; the rest of the UI
+         (action bar, footer, modals) paints immediately so the page is
+         interactive-looking from first paint. -->
+    <style>#frame-inner { opacity: 0; }</style>
     <script data-goatcounter="https://farmreverb.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -200,19 +208,19 @@
                                 <td class="rt-name">nod shot</td>
                                 <td class="rt-sample">19/06/26</td>
                                 <td class="rt-release">26/06/26</td>
-                                <td class="rt-icon"><img src="gifs/release2-bee.png" alt=""></td>
+                                <td class="rt-icon"><img src="gifs/release2-bee.webp" alt=""></td>
                             </tr>
                             <tr class="release-row not-live">
                                 <td class="rt-name">monobaby</td>
                                 <td class="rt-sample">11/09/26</td>
                                 <td class="rt-release">18/09/26</td>
-                                <td class="rt-icon"><img src="gifs/release3.png" alt=""></td>
+                                <td class="rt-icon"><img src="gifs/release3.webp" alt=""></td>
                             </tr>
                             <tr class="release-row not-live">
                                 <td class="rt-name">Tiny Big Much</td>
                                 <td class="rt-sample">09/10/26</td>
                                 <td class="rt-release">16/10/26</td>
-                                <td class="rt-icon"><img src="gifs/release4-color.png" alt=""></td>
+                                <td class="rt-icon"><img src="gifs/release4-color.webp" alt=""></td>
                             </tr>
                         </tbody>
                     </table>
