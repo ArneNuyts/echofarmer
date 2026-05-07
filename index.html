@@ -48,6 +48,9 @@
     <meta name="format-detection" content="telephone=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Bandsintown shows feed: warming the connection saves ~320ms on the
+         upcoming-shows fetch (Lighthouse-flagged). Used by fetchBandsintown(). -->
+    <link rel="preconnect" href="https://rest.bandsintown.com">
     <!-- Async-load the Google Fonts CSS so it doesn't block first paint.
          The deferred script.js (below) calls .media='all' on this link
          right after DOMContentLoaded. A <noscript> fallback ensures users
@@ -153,7 +156,7 @@
         <button id="lock-button" class="icon-button lock-button" aria-label="Lock"><img src="icons/SVG-STATES/NORMAL/lock-open-yellow.svg" alt="Lock"></button>
         <button id="view-toggle" class="icon-button view-toggle" aria-label="Toggle view"><img src="icons/SVG-STATES/NORMAL/room-3D.svg" alt="3D"></button>
         <div id="drive-knob" class="icon-button knob" role="slider" aria-label="Drive" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-            <div class="knob-dial"><img src="icons/SVG-STATES/NORMAL/knob-plus.svg" alt="Drive"></div>
+            <div class="knob-dial"><img src="icons/SVG-STATES/NORMAL/knob-plus.svg" alt="Drive" fetchpriority="high"></div>
         </div>
         <button id="add-video" class="icon-button add-video" aria-label="Add video"><img src="icons/SVG-STATES/NORMAL/plus.svg" alt="Add"></button>
         <button id="info-toggle" class="icon-button" aria-label="Toggle info"><img src="icons/SVG-STATES/NORMAL/question.svg" alt="Info"></button>
