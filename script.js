@@ -1105,6 +1105,9 @@ function setupSvgHoverStates() {
         // Info toggle excluded: src toggles between question.svg / question-disabled.svg
         // based on infoFloatEnabled state — handled manually below.
         if (hoverElement.id === 'info-toggle') return;
+        // Share button excluded: src has 3 states (normal/hover/clicked) and the
+        // clicked state must persist past mouseleave — handled manually below.
+        if (hoverElement.id === 'share-button') return;
         // Drive knob excluded: hover state also active while dragging, handled in driveKnob block
         if (hoverElement.closest('#drive-knob')) return;
         
@@ -2142,7 +2145,14 @@ function showToast(text, duration = 2500) {
     _toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
 }
 
-function setHoverInfo(text) {
+// Lock info-float / toast updates while a pinned message is showing.
+// Other setHoverInfo calls are ignored until this timestamp passes.
+let _hoverInfoLockUntil = 0;
+
+function setHoverInfo(text, opts) {
+    const force = opts && opts.force;
+    // Respect the pinned-message lock unless the caller explicitly bypasses it.
+    if (!force && Date.now() < _hoverInfoLockUntil) return;
     // On touch devices redirect non-empty hints to the toast system.
     // Respect the info toggle: when disabled, suppress hints entirely.
     if (isMobile) {
@@ -2156,8 +2166,32 @@ function setHoverInfo(text) {
         return;
     }
     floatEl.textContent = text || '';
-    if (text && !_infoFloatFrozen) positionInfoFloat(floatEl);
+    if (text && !_infoFloatFrozen) {
+        if (opts && opts.anchor) {
+            positionInfoFloatAt(floatEl, opts.anchor);
+        } else {
+            positionInfoFloat(floatEl);
+        }
+    }
     floatEl.classList.toggle('visible', !!text);
+}
+
+// Position the info-float anchored to a target element (left of it,
+// vertically aligned to its center). Used for pinned messages like the
+// share confirmation that shouldn't follow the cursor.
+function positionInfoFloatAt(el, target) {
+    const offset = 10;
+    const t = target.getBoundingClientRect();
+    const w = el.offsetWidth || 220;
+    const h = el.offsetHeight || 40;
+    let x = t.left - w - offset;
+    let y = t.top + t.height / 2 - h / 2;
+    // If it would overflow the left edge, place to the right instead.
+    if (x < 10) x = t.right + offset;
+    // Clamp vertically inside the viewport.
+    y = Math.max(10, Math.min(window.innerHeight - h - 10, y));
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2541,40 +2575,80 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareBtn = document.getElementById('share-button');
     if (shareBtn) {
         const shareImg = shareBtn.querySelector('img');
-        const SHARE_NORMAL  = 'icons/SVG-STATES/NORMAL/link.svg';
-        const SHARE_CLICKED = 'icons/SVG-STATES/HOVER/link-clicked.svg';
-        // Preload clicked variant to avoid first-tap flicker.
-        const _preload = new Image(); _preload.src = SHARE_CLICKED;
+        const SHARE_NORMAL  = 'icons/SVG-STATES/NORMAL/link-main.svg';
+        const SHARE_HOVER   = 'icons/SVG-STATES/HOVER/link-main-hover.svg';
+        const SHARE_CLICKED = 'icons/SVG-STATES/HOVER/link-clicked-main.svg';
+        // Preload variants to avoid first-tap/hover flicker.
+        [SHARE_HOVER, SHARE_CLICKED].forEach(src => { const i = new Image(); i.src = src; });
 
         const HOVER_MSG  = 'Click to share this website';
-        const COPIED_MSG = 'Website link copied';
+        const COPIED_MSG = 'Link copied';
 
-        // Hover/touch hint (parallels the other action-bar buttons).
+        // Track whether we're showing the post-click icon so hover doesn't
+        // override it during the 1.2s revert window.
+        let _copiedShown = false;
+
+        // Hover/touch hint + icon swap (parallels the other action buttons).
         if (isMobile) {
             shareBtn.addEventListener('touchstart', () => setHoverInfo(HOVER_MSG), { passive: true });
         } else {
-            shareBtn.addEventListener('mouseenter', () => setHoverInfo(HOVER_MSG));
-            shareBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+            shareBtn.addEventListener('mouseenter', () => {
+                // While the pinned "Link copied" is up, leave it alone.
+                if (_copiedShown) return;
+                setHoverInfo(HOVER_MSG);
+                if (shareImg) shareImg.src = SHARE_HOVER;
+            });
+            shareBtn.addEventListener('mouseleave', () => {
+                if (_copiedShown) return;
+                setHoverInfo('');
+                if (shareImg) shareImg.src = SHARE_NORMAL;
+            });
         }
 
+        // Drop the .spinning class once the rotation finishes so it can
+        // be re-triggered on the next click.
+        shareBtn.addEventListener('animationend', () => {
+            shareBtn.classList.remove('spinning');
+        });
+
         let revertTimer = null;
+        const HOLD_MS = 1650; // spin (650ms) + 1s hold
         const showCopied = () => {
+            _copiedShown = true;
             if (shareImg) shareImg.src = SHARE_CLICKED;
             clearTimeout(revertTimer);
-            revertTimer = setTimeout(() => {
-                if (shareImg) shareImg.src = SHARE_NORMAL;
-            }, 1200);
-            // Bypass the info-toggle gating so the user always sees the
-            // confirmation, mirroring the info-toggle's own click feedback.
+            // Pin "Link copied" at the cursor's current position and lock
+            // other hover hints from overwriting it for the hold duration.
+            _hoverInfoLockUntil = Date.now() + HOLD_MS;
             if (isMobile) {
-                showToast(COPIED_MSG);
+                showToast(COPIED_MSG, HOLD_MS);
             } else {
-                setHoverInfo(COPIED_MSG);
+                // Position once at the click point, then freeze so it
+                // doesn't follow the cursor for the hold window.
+                _infoFloatFrozen = false;
+                setHoverInfo(COPIED_MSG, { force: true });
+                _infoFloatFrozen = true;
             }
+            revertTimer = setTimeout(() => {
+                _copiedShown = false;
+                _hoverInfoLockUntil = 0;
+                _infoFloatFrozen = false;
+                if (shareImg) {
+                    shareImg.src = shareBtn.matches(':hover') ? SHARE_HOVER : SHARE_NORMAL;
+                }
+                // Restore the normal hover hint if cursor still over button,
+                // otherwise clear. Use force: lock just expired but be explicit.
+                setHoverInfo(shareBtn.matches(':hover') ? HOVER_MSG : '', { force: true });
+            }, HOLD_MS);
         };
 
         shareBtn.addEventListener('click', async () => {
             gcEvent('main-share');
+            // Restart spin even if clicked mid-animation (force reflow).
+            shareBtn.classList.remove('spinning');
+            void shareBtn.offsetWidth;
+            shareBtn.classList.add('spinning');
+
             const url = window.location.href;
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
