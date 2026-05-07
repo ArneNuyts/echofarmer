@@ -512,16 +512,17 @@ body {
     animation: share-spin 0.65s ease-in-out;
 }
 
-/* "Link copied" toast — styled like the OUT 15/05 badge, centered under
-   the share button, sits above the badge so it pops forward. */
+/* "Link copied" toast — styled like the OUT 15/05 badge, sits just below
+   the share button and pops above all other layers. Anchored to the same
+   right edge as the share button (right: 18px) so on narrow phones it
+   stays fully inside the viewport instead of overflowing. */
 .release-toast {
     position: fixed;
     top: 60px;
-    /* Share button is 35px wide at right:18px → its horizontal center is
-       18 + 17.5 = 35.5px from the viewport's right edge. We anchor the
-       toast's right edge there and shift it back by half its own width. */
-    right: 35.5px;
-    transform: translate(50%, -4px);
+    right: 18px;
+    /* Cap width so it can never overflow the viewport on tiny screens. */
+    max-width: calc(100vw - 36px);
+    transform: translateY(-4px);
     height: 25px;
     padding: 0 12px;
     background: #4d453d;
@@ -543,7 +544,7 @@ body {
 }
 .release-toast.visible {
     opacity: 1;
-    transform: translate(50%, 0);
+    transform: translateY(0);
 }
 
 /* ── Back-to-main-site link (bottom of the card, left-aligned, no box) ─── */

@@ -2518,7 +2518,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMobile) {
             driveKnobHover.addEventListener('touchstart', () => setHoverInfo('Drag up or down to add drive'), { passive: true });
         } else {
-            driveKnobHover.addEventListener('mouseenter', () => setHoverInfo('Turn to add drive'));
+            driveKnobHover.addEventListener('mouseenter', () => setHoverInfo('Drag up or down to add drive'));
             driveKnobHover.addEventListener('mouseleave', () => setHoverInfo(''));
         }
     }
@@ -2535,6 +2535,66 @@ document.addEventListener('DOMContentLoaded', () => {
     if (infoToggleHover) {
         infoToggleHover.addEventListener('mouseenter', () => setHoverInfo(infoFloatEnabled ? 'Hide info' : 'Show info'));
         infoToggleHover.addEventListener('mouseleave', () => setHoverInfo(''));
+    }
+
+    // Share button — copies the page URL, shows confirmation feedback.
+    const shareBtn = document.getElementById('share-button');
+    if (shareBtn) {
+        const shareImg = shareBtn.querySelector('img');
+        const SHARE_NORMAL  = 'icons/SVG-STATES/NORMAL/link.svg';
+        const SHARE_CLICKED = 'icons/SVG-STATES/HOVER/link-clicked.svg';
+        // Preload clicked variant to avoid first-tap flicker.
+        const _preload = new Image(); _preload.src = SHARE_CLICKED;
+
+        const HOVER_MSG  = 'Click to share this website';
+        const COPIED_MSG = 'Website link copied';
+
+        // Hover/touch hint (parallels the other action-bar buttons).
+        if (isMobile) {
+            shareBtn.addEventListener('touchstart', () => setHoverInfo(HOVER_MSG), { passive: true });
+        } else {
+            shareBtn.addEventListener('mouseenter', () => setHoverInfo(HOVER_MSG));
+            shareBtn.addEventListener('mouseleave', () => setHoverInfo(''));
+        }
+
+        let revertTimer = null;
+        const showCopied = () => {
+            if (shareImg) shareImg.src = SHARE_CLICKED;
+            clearTimeout(revertTimer);
+            revertTimer = setTimeout(() => {
+                if (shareImg) shareImg.src = SHARE_NORMAL;
+            }, 1200);
+            // Bypass the info-toggle gating so the user always sees the
+            // confirmation, mirroring the info-toggle's own click feedback.
+            if (isMobile) {
+                showToast(COPIED_MSG);
+            } else {
+                setHoverInfo(COPIED_MSG);
+            }
+        };
+
+        shareBtn.addEventListener('click', async () => {
+            gcEvent('main-share');
+            const url = window.location.href;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = url;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                showCopied();
+            } catch (_) {
+                // Even on failure, give visual feedback.
+                showCopied();
+            }
+        });
     }
 
     // Scrollbar hover info (desktop only — the scrollbar isn't really
@@ -2577,7 +2637,7 @@ async function fetchBandsintown() {
             throw new Error('Invalid response format');
         }
 
-        // Filter for upcoming shows only (events in the future)
+        // Filter for upcoming shows only
         const now = new Date();
         const upcomingEvents = events.filter(event => {
             const eventDate = new Date(event.datetime);

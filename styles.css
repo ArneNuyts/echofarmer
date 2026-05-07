@@ -132,7 +132,8 @@ body.flat-mode {
 
 #lock-button img,
 #add-video img,
-#info-toggle img {
+#info-toggle img,
+#share-button img {
     transform: scale(1.3);
 }
 
@@ -1717,7 +1718,8 @@ body.room-mode #gif-container {
        at 30px the SVGs fill the button naturally. */
     #lock-button img,
     #add-video img,
-    #info-toggle img {
+    #info-toggle img,
+    #share-button img {
         transform: none;
     }
     /* Drive knob: match sibling icon-buttons. */
