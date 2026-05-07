@@ -2232,6 +2232,25 @@ function positionInfoFloatAt(el, target) {
 
 document.addEventListener('DOMContentLoaded', () => {
     new GifSampler(samplerConfig);
+
+    // ── LCP-critical: reveal #frame-inner as soon as gifs are positioned ──
+    // The gif placeholders (esp. pink_dolphin.png) are the LCP candidates on
+    // mobile. They're inside #frame-inner, which is hidden with opacity:0
+    // until JS finishes init — that delay was making mobile LCP ~9s. By
+    // running the room reparent + opacity reveal RIGHT NOW (before all the
+    // other init below), the LCP image can paint as soon as its bytes
+    // arrive (the <link rel=preload> kicks the fetch off during HTML parse).
+    if (VIEW_MODE === 'room') {
+        setupRoomScrollOpen();
+    }
+    {
+        const fi = document.getElementById('frame-inner');
+        if (fi) {
+            fi.style.transition = 'opacity 0.15s';
+            fi.style.opacity = '1';
+        }
+    }
+
     setupCustomScrollbar();
 
     // Mobile: tap empty space (anywhere not on a character / video pad /
@@ -2283,21 +2302,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // In room mode, scrolling drives the back-wall depth (room "opens" as you scroll).
-    if (VIEW_MODE === 'room') {
-        requestAnimationFrame(() => setupRoomScrollOpen());
-    }
-
-    // Reveal the 3D room area now that classes, layout and the gif container
-    // moves are settled — prevents flash on load. Only #frame-inner is
-    // hidden during init; the rest of the UI is visible from first paint.
-    requestAnimationFrame(() => {
-        const fi = document.getElementById('frame-inner');
-        if (fi) {
-            fi.style.transition = 'opacity 0.15s';
-            fi.style.opacity = '1';
-        }
-    });
+    // In room mode, scroll handlers are wired by setupRoomScrollOpen()
+    // which we already called near the top of this handler (LCP-critical).
 
     // Forward wheel events from anywhere on the page to the scroller
     const scroller = document.getElementById('table-scroll');
