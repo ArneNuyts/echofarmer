@@ -2638,12 +2638,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 _copiedShown = false;
                 _hoverInfoLockUntil = 0;
                 _infoFloatFrozen = false;
+                // On touch devices `:hover` is sticky after a tap until the
+                // user taps elsewhere, so checking it would leave the button
+                // in the hover state forever. Always revert to NORMAL on mobile.
                 if (shareImg) {
-                    shareImg.src = shareBtn.matches(':hover') ? SHARE_HOVER : SHARE_NORMAL;
+                    shareImg.src = (!isMobile && shareBtn.matches(':hover')) ? SHARE_HOVER : SHARE_NORMAL;
                 }
                 // Restore the normal hover hint if cursor still over button,
                 // otherwise clear. Use force: lock just expired but be explicit.
-                setHoverInfo(shareBtn.matches(':hover') ? HOVER_MSG : '', { force: true });
+                setHoverInfo((!isMobile && shareBtn.matches(':hover')) ? HOVER_MSG : '', { force: true });
             }, HOLD_MS);
         };
 
