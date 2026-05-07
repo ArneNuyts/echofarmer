@@ -358,7 +358,7 @@
                 toastEl.className = 'release-toast';
                 toastEl.setAttribute('role', 'status');
                 toastEl.setAttribute('aria-live', 'polite');
-                toastEl.textContent = 'link copied';
+                toastEl.textContent = 'Link copied';
                 document.body.appendChild(toastEl);
             }
             // Force reflow so re-adding .visible restarts the transition

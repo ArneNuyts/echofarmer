@@ -728,10 +728,13 @@ function setupRoomScrollOpen() {
         const _gcStepMomentum = (last) => {
             const now = performance.now();
             const dt = Math.min(now - last, 32);
-            const decay = Math.pow(0.95, dt);
+            // Per-frame decay tuned to iOS Safari momentum: ~0.95 per 16ms
+            // frame → half-life ~215ms. Long, soft tail rather than the
+            // previous near-instant stop.
+            const decay = Math.pow(0.95, dt / 16);
             _gcVel *= decay;
             scroller.scrollTop += _gcVel * dt;
-            if (Math.abs(_gcVel) < 0.02) { _gcRaf = null; return; }
+            if (Math.abs(_gcVel) < 0.01) { _gcRaf = null; return; }
             _gcRaf = requestAnimationFrame(() => _gcStepMomentum(now));
         };
         gifContainer.addEventListener('touchstart', (e) => {
@@ -807,12 +810,13 @@ function setupRoomScrollOpen() {
         const stepMomentum = (last) => {
             const now = performance.now();
             const dt = Math.min(now - last, 32);
-            // Exponential decay: lose ~5%/ms (half-life ~14ms) — tuned to feel
-            // close to iOS native momentum on a long flick.
-            const decay = Math.pow(0.95, dt);
+            // Per-frame decay tuned to iOS Safari momentum: ~0.95 per 16ms
+            // frame → half-life ~215ms. Previous per-ms decay killed the
+            // velocity in <100ms which felt like a dead stop.
+            const decay = Math.pow(0.95, dt / 16);
             _fsVel *= decay;
             scroller.scrollTop += _fsVel * dt;
-            if (Math.abs(_fsVel) < 0.02) { _fsRaf = null; return; }
+            if (Math.abs(_fsVel) < 0.01) { _fsRaf = null; return; }
             _fsRaf = requestAnimationFrame(() => stepMomentum(now));
         };
         floorSection.addEventListener('touchstart', (e) => {

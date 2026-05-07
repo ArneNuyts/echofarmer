@@ -512,29 +512,38 @@ body {
     animation: share-spin 0.65s ease-in-out;
 }
 
-/* "link copied" toast — appears just below the share button, fades out. */
+/* "Link copied" toast — styled like the OUT 15/05 badge, centered under
+   the share button, sits above the badge so it pops forward. */
 .release-toast {
     position: fixed;
     top: 60px;
-    right: 18px;
-    padding: 7px 12px;
-    background: rgba(77, 69, 61, 0.92);
-    color: #f4f1ec;
+    /* Share button is 35px wide at right:18px → its horizontal center is
+       18 + 17.5 = 35.5px from the viewport's right edge. We anchor the
+       toast's right edge there and shift it back by half its own width. */
+    right: 35.5px;
+    transform: translate(50%, -4px);
+    height: 25px;
+    padding: 0 12px;
+    background: #4d453d;
+    color: #dfdcd8;
     font-family: "Geist", sans-serif;
-    font-weight: 500;
-    font-size: 12px;
-    letter-spacing: 0.01em;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
     pointer-events: none;
     opacity: 0;
-    transform: translateY(-4px);
     transition: opacity 0.18s ease, transform 0.18s ease;
-    z-index: 7;
+    z-index: 20;
+    white-space: nowrap;
 }
 .release-toast.visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(50%, 0);
 }
 
 /* ── Back-to-main-site link (bottom of the card, left-aligned, no box) ─── */
