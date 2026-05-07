@@ -3,7 +3,7 @@ const samplerConfig = [
     {
         gif: 'gifs/wolk-1.webp',           // Path to GIF
         staticImg: 'gifs/wolk-1.png',     // Path to static image (first frame)
-        audio: 'audio/sth-kick.wav',      // Path to audio file
+        audio: 'audio/sth-kick.m4a',      // Path to audio file
         width: 92,                         // Width in pixels (~11.2% of 819)
         height: 67,                        // Height in pixels (~11.2% of 599)
         x: 20,                             // Initial X position (%)
@@ -14,14 +14,14 @@ const samplerConfig = [
         staticImg: 'gifs/pink_dolphin.png', // Path to static image (first frame)
         alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
         audioList: [                       // Random sample picked on each trigger
-            'audio/sweet-samples/samp1.wav',
-            'audio/sweet-samples/samp2.wav',
-            'audio/sweet-samples/samp3.wav',
-            'audio/sweet-samples/samp4.wav',
-            'audio/sweet-samples/samp5.wav',
-            'audio/sweet-samples/samp6.wav',
-            'audio/sweet-samples/samp8.wav',
-            'audio/sweet-samples/samp9.wav'
+            'audio/sweet-samples/samp1.m4a',
+            'audio/sweet-samples/samp2.m4a',
+            'audio/sweet-samples/samp3.m4a',
+            'audio/sweet-samples/samp4.m4a',
+            'audio/sweet-samples/samp5.m4a',
+            'audio/sweet-samples/samp6.m4a',
+            'audio/sweet-samples/samp8.m4a',
+            'audio/sweet-samples/samp9.m4a'
         ],
         width: 112,                        // Width in pixels
         height: 112,                       // Height in pixels
@@ -32,7 +32,7 @@ const samplerConfig = [
         gif: 'gifs/pink_dolphin.webp',     // Path to GIF
         staticImg: 'gifs/pink_dolphin.png', // Path to static image (first frame)
         alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
-        audio: 'audio/sweet.wav',         // Path to audio file
+        audio: 'audio/sweet.m4a',         // Path to audio file
         width: 112,                        // Width in pixels
         height: 112,                       // Height in pixels
         x: 80,                             // Initial X position (%)
@@ -42,7 +42,7 @@ const samplerConfig = [
         gif: 'gifs/blue_dolphin.webp',     // Path to GIF
         staticImg: 'gifs/blue_dolphin.png', // Path to static image (first frame)
         alphaImg: 'gifs/dolphin-alpha.png', // Dedicated alpha-mask image
-        audio: 'audio/so.wav',            // Path to audio file
+        audio: 'audio/so.m4a',            // Path to audio file
         width: 112,                        // Width in pixels
         height: 112,                       // Height in pixels
         x: 30,                             // Initial X position (%)
@@ -51,7 +51,7 @@ const samplerConfig = [
     {
         gif: 'gifs/wolk-2.webp',           // Path to GIF
         staticImg: 'gifs/wolk-2.png',     // Path to static image (first frame)
-        audio: 'audio/sth-snare.wav',     // Path to audio file
+        audio: 'audio/sth-snare.m4a',     // Path to audio file
         width: 99,                         // Width in pixels (~11.2% of 888)
         height: 75,                        // Height in pixels (~11.2% of 669)
         x: 70,                             // Initial X position (%)
@@ -61,7 +61,7 @@ const samplerConfig = [
     // {
     //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
-    //     audio: 'audio/dans1.wav',
+    //     audio: 'audio/dans1.m4a',
     //     width: 112,
     //     height: 112,
     //     x: 25,
@@ -70,7 +70,7 @@ const samplerConfig = [
     // {
     //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
-    //     audio: 'audio/dans2.wav',
+    //     audio: 'audio/dans2.m4a',
     //     width: 112,
     //     height: 112,
     //     x: 60,
@@ -79,7 +79,7 @@ const samplerConfig = [
     // {
     //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
-    //     audio: 'audio/dans3.wav',
+    //     audio: 'audio/dans3.m4a',
     //     width: 112,
     //     height: 112,
     //     x: 40,
