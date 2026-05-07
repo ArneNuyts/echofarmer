@@ -56,6 +56,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 
+    <!-- LCP candidate: the pink_dolphin static placeholder is the largest
+         visible image on first paint. Preloading at high priority lets the
+         browser fetch it during HTML parse, before script.js runs. -->
+    <link rel="preload" as="image" href="gifs/pink_dolphin.png" fetchpriority="high">
+
     <!-- Tab icon (favicon). -->
     <link rel="icon" type="image/png" href="gifs/pink_dolphin_release.png">
     <link rel="apple-touch-icon" href="gifs/pink_dolphin_release.png">

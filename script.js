@@ -1543,6 +1543,10 @@ class GifSampler {
         // Create placeholder div (shows when paused)
         const placeholder = document.createElement('img');
         placeholder.src = config.staticImg;
+        // Hint the browser to fetch + decode this synchronously at high
+        // priority — these placeholders are the LCP candidates on mobile.
+        placeholder.setAttribute('fetchpriority', 'high');
+        placeholder.setAttribute('decoding', 'sync');
         placeholder.style.position = 'absolute';
         placeholder.style.top = '0';
         placeholder.style.left = '0';
