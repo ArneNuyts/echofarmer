@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://echofarmer.com/sitemap.xml

@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>echofarmer</title>
+    <title>echofarmer — interactive sample pad &amp; releases</title>
+    <meta name="description" content="echofarmer is a music project. Play the interactive sample pad, browse releases, and find upcoming shows.">
+    <link rel="canonical" href="https://echofarmer.com/">
     <!--
       Content Security Policy (defence-in-depth against XSS).
       GitHub Pages doesn't set a CSP header for you, so we set one via
@@ -25,7 +27,7 @@
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' https://www.youtube.com https://s.ytimg.com https://gc.zgo.at;
+      script-src 'self' 'sha256-N933cJD/nUbACH1nscfTwfuVjg8AJGa2s6BJqRNuyLw=' 'sha256-05nCFmGTHVzz1OL+LT8fuggzhbDghj05nrqbvMFQ1vs=' https://www.youtube.com https://s.ytimg.com https://gc.zgo.at;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data: blob: https://i.ytimg.com;
@@ -63,6 +65,30 @@
     <meta name="twitter:title" content="echofarmer">
     <meta name="twitter:description" content="Sample-pad music site by echofarmer.">
     <meta name="twitter:image" content="preview/preview-main.png">
+
+    <!-- Structured data: helps Google build a knowledge panel for the artist. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicGroup",
+      "name": "echofarmer",
+      "url": "https://echofarmer.com",
+      "image": "https://echofarmer.com/preview/preview-main.png",
+      "sameAs": [
+        "https://www.instagram.com/echofarmer_/",
+        "https://music.apple.com/us/artist/echofarmer/1717770204",
+        "https://tidal.com/artist/43987921"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "echofarmer",
+      "url": "https://echofarmer.com"
+    }
+    </script>
     <!--
       Preload the animated WebP gif assets so the browser starts fetching
       them before script.js parses, eliminates the first-activation network
