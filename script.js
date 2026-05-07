@@ -1,3 +1,12 @@
+// Activate the async-loaded Google Fonts stylesheet (declared in index.html
+// with media="print" so it doesn't block first paint). Flipping to "all"
+// applies it now that the critical render is done. CSP-safe alternative
+// to the inline onload="this.media='all'" attribute.
+(function activateFontCss() {
+    const fontCss = document.getElementById('font-css');
+    if (fontCss) fontCss.media = 'all';
+})();
+
 // Configuration: Add your GIFs and audio files here
 const samplerConfig = [
     {

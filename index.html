@@ -48,7 +48,12 @@
     <meta name="format-detection" content="telephone=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@450;700;800&display=swap" rel="stylesheet">
+    <!-- Async-load the Google Fonts CSS so it doesn't block first paint.
+         The deferred script.js (below) calls .media='all' on this link
+         right after DOMContentLoaded. A <noscript> fallback ensures users
+         with JS off still get the font. CSP-safe: no inline event handler. -->
+    <link id="font-css" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@450;700;800&display=swap" media="print">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@450;700;800&display=swap"></noscript>
     <link rel="stylesheet" href="styles.css">
 
     <!-- LCP candidate: the pink_dolphin static placeholder is the largest
@@ -261,6 +266,6 @@
     </div>
     <div id="custom-scrollbar"><div id="custom-scrollbar-thumb"></div></div>
 
-    <script src="script.js"></script>
+    <script defer src="script.js"></script>
 </body>
 </html>
