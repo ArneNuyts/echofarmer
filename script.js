@@ -2251,6 +2251,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Now that LCP can paint, kick off prefetch of the animated WebP gifs.
+    // Done from JS (rather than <link rel=prefetch> in <head>) so they don't
+    // compete with the LCP image for bandwidth on slow mobile connections.
+    // The pre-warm pool in GifSampler will pick them up from cache on first
+    // tap. Fired in requestIdleCallback (or setTimeout fallback) so even
+    // slower devices get the LCP frame before this kicks in.
+    {
+        const prefetchAnimatedGifs = () => {
+            ['gifs/blue_dolphin.webp', 'gifs/pink_dolphin.webp',
+             'gifs/wolk-1.webp', 'gifs/wolk-2.webp'].forEach(href => {
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.as = 'image';
+                link.type = 'image/webp';
+                link.href = href;
+                document.head.appendChild(link);
+            });
+        };
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(prefetchAnimatedGifs, { timeout: 2000 });
+        } else {
+            setTimeout(prefetchAnimatedGifs, 800);
+        }
+    }
+
     setupCustomScrollbar();
 
     // Mobile: tap empty space (anywhere not on a character / video pad /
