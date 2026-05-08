@@ -2860,6 +2860,20 @@ function displayShows(events, container) {
     // Clear previous content safely.
     container.replaceChildren();
 
+    // Manual overrides: when an event has a better external link than the
+    // Bandsintown ticket page (e.g. promoter site, Resident Advisor), map
+    // the Bandsintown event id (or YYYY-MM-DD datetime prefix) to the URL
+    // we'd rather link to. Match is by id first, then by date.
+    const EVENT_URL_OVERRIDES = {
+        // Bandsintown id keys (string) → preferred URL
+        // e.g. '1031234567': 'https://ra.co/events/2425508',
+
+        // Date-prefix keys (YYYY-MM-DD) → preferred URL. Useful when you
+        // don't know the Bandsintown id but only have one event on that day.
+        // The single currently-listed show:
+        '2026-05-29': 'https://ra.co/events/2425508',
+    };
+
     events.forEach(event => {
         const eventDate = new Date(event.datetime);
         const dateStr = eventDate.toLocaleDateString('en-US', { 
@@ -2877,7 +2891,15 @@ function displayShows(events, container) {
         // Anything else (javascript:, data:, etc.) is silently dropped to
         // mitigate XSS via a compromised/malicious upstream response.
         const rawUrl = (event.url || '') + '';
-        const eventUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : '';
+        // Allow manual override (see EVENT_URL_OVERRIDES above) so we can
+        // point at e.g. ra.co or a promoter page instead of the default
+        // Bandsintown ticket link.
+        const datePrefix = (event.datetime || '').slice(0, 10);
+        const overrideUrl = EVENT_URL_OVERRIDES[String(event.id)]
+            || EVENT_URL_OVERRIDES[datePrefix]
+            || '';
+        const candidateUrl = overrideUrl || rawUrl;
+        const eventUrl = /^https?:\/\//i.test(candidateUrl) ? candidateUrl : '';
 
         const showEl = document.createElement('div');
         showEl.className = 'show-item';
