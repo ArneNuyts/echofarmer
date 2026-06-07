@@ -67,15 +67,35 @@ const samplerConfig = [
         y: 60                              // Initial Y position (%)
     },
     // hidden for now — restore when ready:
-    // {
-    //     gif: 'gifs/blue_dolphin.webp',
-    //     staticImg: 'gifs/blue_dolphin.png',
-    //     audio: 'audio/dans1.m4a',
-    //     width: 112,
-    //     height: 112,
-    //     x: 25,
-    //     y: 25
-    // },
+    {
+        gif: 'gifs/bij-ani-fast3.webp',
+        staticImg: 'gifs/bij-ani-fast2.png',
+        audio: 'audio/nod1.wav',
+        width: 150,
+        height: 150,
+        x: 25,
+        y: 25
+    },
+
+    {
+        gif: 'gifs/bij-laptop-f2.webp',
+        staticImg: 'gifs/bij-laptop.png',
+        audio: 'audio/nod-squeek.wav',
+        width: 100,
+        height: 100,
+        x: 25,
+        y: 25
+    },
+   
+    {
+        gif: 'gifs/bij-ani-fast3.webp',
+        staticImg: 'gifs/bij-ani-fast2.png',
+        audio: 'audio/nod-clap.wav',
+        width: 150,
+        height: 150,
+        x: 25,
+        y: 25
+    },
     // {
     //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',

@@ -1504,10 +1504,6 @@ body.room-mode #gif-container {
 /* Not-live releases: greyed + blurred to read as "coming soon, not actionable".
    Also unselectable so the obscured titles/dates can't be copied out of the DOM
    (the underlying text is still in the HTML source, but this discourages casual
-   leaking via copy/paste). */
-/* Not-live releases: greyed + blurred to read as "coming soon, not actionable".
-   Also unselectable so the obscured titles/dates can't be copied out of the DOM
-   (the underlying text is still in the HTML source, but this discourages casual
    leaking via copy/paste).
    Blur is applied to the whole <tr> (instead of each <td>) so the soft halo
    stays continuous across cells rather than getting clipped at every cell
