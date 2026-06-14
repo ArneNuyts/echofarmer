@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>something so suite — echofarmer</title>
+    <meta name="description" content="something so suite by echofarmer — out 15/05/26. Sign up to get notified, then listen on your favorite streaming service.">
+
+    <!-- Security: limit what the page can load. fonts.googleapis.com for the
+         font CSS, fonts.gstatic.com for the font files, EmailOctopus for the
+         signup POST, plus self for everything we ship. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        img-src 'self' data:;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        script-src 'self' 'unsafe-inline' https://gc.zgo.at;
+        connect-src https://emailoctopus.com https://eomail5.com https://farmreverb.goatcounter.com;
+        form-action https://emailoctopus.com https://eomail5.com;
+        frame-ancestors 'none';
+        base-uri 'self';">
+    <!-- Don't leak the full URL to streaming services / image hosts. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="music.song">
+    <meta property="og:title" content="something so suite — echofarmer">
+    <meta property="og:description" content="Out 15/05/26 — sign up to get notified.">
+    <meta property="og:image" content="../artwork/sweet.webp">
+    <meta property="og:url" content="https://echofarmer.com/releases/something-so-suite/">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://echofarmer.com/releases/something-so-suite/">
+
+    <!-- Tab icon (favicon). -->
+    <link rel="icon" type="image/png" href="../../gifs/pink_dolphin_release.png">
+    <link rel="apple-touch-icon" href="../../gifs/pink_dolphin_release.png">
+
+    <!-- Structured data for the release. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicAlbum",
+      "name": "something so suite",
+      "byArtist": {
+        "@type": "MusicGroup",
+        "name": "echofarmer",
+        "url": "https://echofarmer.com"
+      },
+      "datePublished": "2026-05-15",
+      "url": "https://echofarmer.com/releases/something-so-suite/",
+      "image": "https://echofarmer.com/releases/artwork/sweet.webp"
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Only the weights actually used on this page: 450 regular, 700 bold,
+         and 450 italic for the email placeholder. -->
+    <link href="https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,450;0,700;1,450&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../_assets/style.css">
+    <script data-goatcounter="https://farmreverb.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+    <div class="release-frame">
+        <main class="release-card">
+            <div class="release-cover">
+                <!-- Cover art src is set by page.js from RELEASE_CONFIG.cover -->
+                <img src="" alt="">
+            </div>
+
+            <br><h1 class="release-title"></h1><br>
+            <div class="release-artist"></div><br>
+
+            <form class="notify-form" novalidate method="post">
+                <div class="notify-row">
+                    <input type="text" name="hpc4b27b6e-eb38-11e9-be00-06b4694bee2a" tabindex="-1" aria-hidden="true" class="notify-hp" autocomplete="off">
+                    <input type="email" name="field_0" class="notify-input"
+                           placeholder="your@email.com" required autocomplete="email" aria-label="Email address">
+                    <button type="submit" class="notify-submit">sign up</button>
+                </div>
+                <div class="notify-status" aria-live="polite"></div>
+            </form>
+
+            <a class="release-back" href="https://echofarmer.com/">Back to echofarmer.com</a>
+        </main>
+    </div>
+
+    <script>
+    window.RELEASE_CONFIG = {
+        artist: "This mailing list gives you the latest updates on echofarmer, only when there's something new to share. It allows me to get in touch with you without social media platforms getting in the way.",
+        title: "Hi! Sign up to get notified about new releases and shows.",
+        cover: "../artwork/mail.png",
+        emailoctopus: {
+            action: "https://eomail5.com/form/a8dd4752-4953-11f1-8664-c35404464fe0"
+        },
+    };
+    </script>
+    <script src="../_assets/page.js"></script>
+</body>
+</html>
