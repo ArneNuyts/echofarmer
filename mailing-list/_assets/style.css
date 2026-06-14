@@ -1,3 +1,8 @@
+/* ── Release landing page ────────────────────────────────────────────────── */
+/* Pixel-precise design tuned for iPhone SE (375×667).
+   On larger screens the 315×667 card stays the same and is centered.
+   Geist weights used: 450 = "regular", 700 = "bold". */
+
 * {
     margin: 0;
     padding: 0;
@@ -35,10 +40,12 @@ body {
 }
 
 /* ── The card ───────────────────────────────────────────────── */
+/* 315×667, centered. Fixed size — designed for iPhone SE. On bigger screens
+   it stays the same; on smaller screens it scales down width-wise only. */
 .release-card {
     position: relative;
     width: 315px;
-    /* Height + cover size driven by --card-height and --cover-size,
+    /* Height + cover size are driven by --card-height and --cover-size,
        set by JS so the layout shrinks the artwork before scaling everything. */
     height: var(--card-height, 667px);
     background: #dfdcd8;
@@ -84,12 +91,10 @@ body {
     margin-top: 2px;
     font-size: 15px;
     font-weight: 450;
-    line-height: 1.2;
+    line-height: 1.1;
     color: #4d453d;
     text-align: left;
 }
-
-
 
 /* ── Notify form ─────────────────────────────────────────────────────────── */
 .notify-label {
@@ -250,6 +255,77 @@ body {
     border-bottom: 4px solid #dfdcd8;
 }
 
+/* ── Streaming service buttons ───────────────────────────────────────────── */
+/* 250×35 row: 30×30 icon + name (regular #4d453d 13px) + 70×30 follow pill */
+.service-list {
+    margin-top: 5px;
+    width: 250px;
+    align-self: center;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.service-link {
+    display: flex;
+    align-items: center;
+    width: 250px;
+    height: 35px;
+    border: 1px solid #4d453d;
+    border-radius: 5px;
+    background: #dfdcd8;
+    color: #4d453d;
+    text-decoration: none;
+    overflow: hidden;
+    padding: 0;
+    transition: background 0.12s ease, transform 0.12s ease;
+    transform-origin: center;
+}
+.service-link:hover {
+    background: #f0ede9;
+    transform: scale(1.025);
+}
+.service-icon {
+    width: 30px;
+    height: 30px;
+    margin-left: 2px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+.service-name {
+    flex: 1;
+    padding-left: 8px;
+    font-family: "Geist", sans-serif;
+    font-weight: 450;
+    font-size: 13px;
+    color: #4d453d;
+    text-align: left;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.service-action {
+    width: 70px;
+    height: 30px;
+    margin-right: 1.5px;
+    background: #4d453d;
+    color: #dfdcd8;
+    border-radius: 5px;
+    font-family: "Geist", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: lowercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.08s ease;
+}
+.service-link:hover .service-action {
+    background: #595147;
+}
+
 /* ── Responsive scaling ──────────────────────────────────────────────────── */
 /* The card is built at a fixed 315×667 design size. JS computes a uniform
    scale factor (--scale) and we apply it via transform so every element
@@ -287,6 +363,81 @@ body {
    on a single line ("Something So Suite" never breaks across two lines). */
 .nowrap { white-space: nowrap; }
 
+/* ── Share-link icon button (top-right corner) ───────────────────── */
+/* Two stacked icons (default + copied); we toggle which one is visible on
+   click. The button itself is transparent — the icons supply the look. */
+.release-share {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 35px;
+    height: 35px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 6;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+    transition: transform 0.12s ease, filter 0.12s ease;
+    transform-origin: center;
+}
+.release-share .share-icon {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+.release-share .share-icon-copied { opacity: 0; }
+.release-share.copied .share-icon-default { opacity: 0; }
+.release-share.copied .share-icon-copied  { opacity: 1; }
+.release-share:hover { transform: scale(1.08); }
+
+@keyframes share-spin {
+    from { rotate: 0deg; }
+    to   { rotate: 360deg; }
+}
+.release-share.spinning {
+    animation: share-spin 0.65s ease-in-out;
+}
+
+/* "Link copied" toast — styled like the OUT 15/05 badge, sits just below
+   the share button and pops above all other layers. Anchored to the same
+   right edge as the share button (right: 18px) so on narrow phones it
+   stays fully inside the viewport instead of overflowing. */
+.release-toast {
+    position: fixed;
+    top: 60px;
+    right: 18px;
+    /* Cap width so it can never overflow the viewport on tiny screens. */
+    max-width: calc(100vw - 36px);
+    transform: translateY(-4px);
+    height: 25px;
+    padding: 0 12px;
+    background: #4d453d;
+    color: #dfdcd8;
+    font-family: "Geist", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 20;
+    white-space: nowrap;
+}
+.release-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 /* ── Back-to-main-site link (bottom of the card, left-aligned, no box) ─── */
 .release-back {
     margin-top: auto;
@@ -301,3 +452,7 @@ body {
     text-underline-offset: 2px;
 }
 .release-back:hover { opacity: 0.7; }
+
+/* (Smaller-than-iPhone-SE-width fallback removed: the JS scale transform
+   now handles every viewport uniformly — the 315×667 design is preserved
+   and only its visual size changes.) */
