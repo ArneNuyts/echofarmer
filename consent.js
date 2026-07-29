@@ -119,18 +119,17 @@
     wrap.setAttribute('aria-label', 'Cookie consent');
     wrap.innerHTML =
       '<div class="ef-card">' +
-        '<h2>A quick note on cookies</h2>' +
-        '<p>Necessary cookies keep this soundworld running. With your OK we also use ' +
-        '<b>analytics</b> (to see how the site gets used) and, when we run ads, <b>marketing</b> ' +
-        'cookies. Nothing non-essential loads until you choose. ' +
-        'See our <a href="' + POLICY_URL + '">Privacy &amp; Cookie Policy</a>.</p>' +
+        '<h2>This website uses cookies</h2>' +
+        '<p><b>Necessary cookies</b> keep this website running. <p> Only with your consent we also use ' +
+        '<b>analytics</b> (to see how the site gets used) and <b>marketing cookies</b> when we run ads. ' +
+        'No non-essential cookies load until you make a choice. See our <a href="' + POLICY_URL + '">Privacy &amp; Cookie Policy</a>.</p>' +
         '<div class="ef-cats" id="ef-cats">' +
           '<div class="ef-cat ef-locked"><input type="checkbox" checked disabled>' +
-          '<span><b>Necessary</b> — always on. Makes the site work and remembers this choice.</span></div>' +
+          '<span><b>Necessary:</b> always on. Makes the site work and remembers this choice.</span></div>' +
           '<div class="ef-cat"><input type="checkbox" id="ef-analytics" checked>' +
-          '<span><b>Analytics</b> — anonymous usage stats (Google Analytics 4).</span></div>' +
+          '<span><b>Analytics:</b> anonymous usage stats (Google Analytics 4).</span></div>' +
           '<div class="ef-cat"><input type="checkbox" id="ef-marketing">' +
-          '<span><b>Marketing</b> — ad measurement &amp; retargeting (Meta Pixel).</span></div>' +
+          '<span><b>Marketing:</b> ad measurement &amp; retargeting (Meta Pixel).</span></div>' +
         '</div>' +
         '<div class="ef-actions">' +
           '<button type="button" class="ef-manage" id="ef-manage">Manage</button>' +
