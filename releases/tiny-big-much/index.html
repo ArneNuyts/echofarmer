@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>nod shot — echofarmer</title>
-    <meta name="description" content="nod shot by echofarmer — out 19/06/26. Sign up to get notified, then listen on your favorite streaming service.">
+    <title>tiny big much — echofarmer</title>
+    <meta name="description" content="tiny big much by echofarmer is out 25/09/26. Sign up to get notified, and listen on your favorite streaming service.">
 
     <!-- Security: limit what the page can load. fonts.googleapis.com for the
          font CSS, fonts.gstatic.com for the font files, EmailOctopus for the
@@ -24,12 +24,12 @@
 
     <!-- Open Graph / social previews -->
     <meta property="og:type" content="music.song">
-    <meta property="og:title" content="nod shot — echofarmer">
-    <meta property="og:description" content="Out 19/06/26 — sign up to get notified.">
-    <meta property="og:image" content="../artwork/nod-shot.webp">
-    <meta property="og:url" content="https://echofarmer.com/releases/nod-shot/">
+    <meta property="og:title" content="tiny big much — echofarmer">
+    <meta property="og:description" content="Out 25/09/26: sign up to get notified.">
+    <meta property="og:image" content="../artwork/tiny.webp">
+    <meta property="og:url" content="https://echofarmer.com/releases/tiny-big-much/">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="canonical" href="https://echofarmer.com/releases/nod-shot/">
+    <link rel="canonical" href="https://echofarmer.com/releases/tiny-big-much/">
 
     <!-- Tab icon (favicon). -->
     <link rel="icon" type="image/png" href="../../gifs/pink_dolphin_release.png">
@@ -40,24 +40,22 @@
     {
       "@context": "https://schema.org",
       "@type": "MusicAlbum",
-      "name": "nod shot",
+      "name": "tiny big much",
       "byArtist": {
         "@type": "MusicGroup",
         "name": "echofarmer",
         "url": "https://echofarmer.com"
       },
-      "datePublished": "2026-06-19",
-      "url": "https://echofarmer.com/releases/nod-shot/",
-      "image": "https://echofarmer.com/releases/artwork/nod-shot.webp"
+      "datePublished": "2026-09-25",
+      "url": "https://echofarmer.com/releases/tiny-big-much/",
+      "image": "https://echofarmer.com/releases/artwork/tiny.webp"
     }
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Only the weights actually used on this page: 450 regular, 700 bold,
-         and 450 italic for the email placeholder. -->
     <link href="https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,450;0,700;1,450&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../_assets/style.css">
+    <link rel="stylesheet" href="../_assets/style2.css">
     <script data-goatcounter="https://farmreverb.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -65,7 +63,7 @@
     <div class="release-frame">
         <main class="release-card">
             <div class="release-cover">
-                <!-- Cover art src is set by page.js from RELEASE_CONFIG.cover -->
+                <!-- Cover art src is set by page2.js from RELEASE_CONFIG.cover -->
                 <img src="" alt="">
             </div>
 
@@ -81,7 +79,14 @@
             </div>
 
             <!-- "Out now" hero (replaces countdown post-release) -->
-            <div class="release-out-now" hidden>Out now — listen below</div>
+            <div class="release-out-now" hidden>Out now! Listen below</div>
+
+            <a href="https://botanique.be/en/concert/echofarmer-2026"
+            class="linkbox"
+            target="_blank">
+            Pre-order the CD
+            </a>
+            
 
             <div class="notify-label">Get notified the moment it drops</div>
 
@@ -97,64 +102,52 @@
                 </div>
                 <div class="notify-status" aria-live="polite"></div>
             </form>
-
-            <!-- Streaming service buttons (rendered by page.js, top→bottom:
-                 bandcamp, tidal, apple music, spotify, soundcloud) -->
+            
             <ul class="service-list"></ul>
-
-            <!-- "OUT DD/MM!" floating badge — drifts around the top half of
-                 the card. Positioned at card-level so it can roam over the
-                 cover/title/countdown area, but not over the email/links. -->
+            
+            <a href="https://botanique.be/en/concert/echofarmer-2026"
+            class="linkbox2"
+            target="_blank">
+            Get your release show tickets
+            </a>
+            
+            <a href="https://botanique.be/en/concert/echofarmer-2026"
+            class="linkbox2"
+            target="_blank">
+            Reserve your spot for<br>the listening session
+            </a>
+            
             <div class="release-badge"></div>
 
-            <!-- Share-link button — fixed in the top-right corner.
-                 Click copies the page URL; icon swaps to the "clicked" state. -->
             <button type="button" class="release-share" aria-label="Copy link to this page">
                 <img class="share-icon share-icon-default" src="../../icons/SVG-STATES/NORMAL/link.svg" alt="" aria-hidden="true">
                 <img class="share-icon share-icon-copied"  src="../../icons/SVG-STATES/HOVER/link-clicked.svg" alt="" aria-hidden="true">
             </button>
 
-            <!-- Footer link back to the main site. -->
             <a class="release-back" href="https://echofarmer.com/">Back to echofarmer.com</a>
         </main>
     </div>
 
-    <!-- Per-release config: edit this block when the release info changes.
-         Streaming URLs come in two flavors:
-           preLive  = where to send people BEFORE the release (e.g. artist
-                      page on that service, or null to hide the button)
-           postLive = where to send people AFTER the release (the actual
-                      track URL — fill in once DistroKid distributes it). -->
+
     <script>
     window.RELEASE_CONFIG = {
         artist: "echofarmer",
-        title: "nod shot",
-        // ISRC for the release (kept here for reference; not used by page logic).
+        title: "tiny big much",
         isrc: "",
-        // Date-only string (YYYY-MM-DD). page.js treats this as midnight in
-        // the visitor's own local timezone, so the drop feels simultaneous
-        // globally (everyone's local midnight on this date).
-        releaseDate: "2026-06-19",
-        // Cover art (relative to this index.html). Swap to actual album art
-        // when available — current placeholder is the floor-table icon.
-        cover: "../artwork/nod-shot.webp",
-        // EmailOctopus form-action URL for THIS release. Create a separate
-        // form in EmailOctopus that auto-tags subscribers with something like
-        // "presave:something-so-suite" so you can email this segment on
-        // release day. Leave action: "" until the form is created.
+        releaseDate: "2026-09-25",
+        cover: "../artwork/tiny.webp",
+
         emailoctopus: {
             action: "https://eomail5.com/form/a8dd4752-4953-11f1-8664-c35404464fe0"
         },
-        // Streaming links. Set preLive: null to skip a button entirely
-        // before release; postLive will be filled in once DistroKid pushes
-        // the track and you have per-service URLs.
+
         links: {
             bandcamp: {
                 preLive:  "https://echofarmer.bandcamp.com",
                 postLive: ""
             },
             tidal: {
-                preLive:  "https://tidal.com/artist/43987920",
+                preLive:  "https://tidal.com/artist/43987921",
                 postLive: ""
             },
             apple: {
@@ -172,6 +165,6 @@
         }
     };
     </script>
-    <script src="../_assets/page.js"></script>
+    <script src="../_assets/page2.js"></script>
 </body>
 </html>
