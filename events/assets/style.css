@@ -243,6 +243,35 @@
    
     th{background:#cfcabf;font-weight:800}
    
+    .mail-head{
+        font-size:18px;
+        font-weight:800;
+        line-height:1.5;
+        margin:0 0 0px;
+        text-align:center;
+    }
+    .mail-txt{
+        font-size:18px;
+        font-weight:400;
+        line-height:1.5;
+        margin:0 0 00px;
+        text-align:center;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+        margin:10px 0 6px;
+        font-size:13.5px}
+   
+    th,td{
+        border:1px solid var(--line);
+        padding:8px 10px;
+        text-align:left;
+        vertical-align:top}
+   
+    th{background:#cfcabf;font-weight:800}
+   
     ul{margin:0 0 12px;padding-left:20px}
    
     li{margin:3px 0}
