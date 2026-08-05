@@ -205,6 +205,77 @@ body {
 }
 .release-out-now[hidden] { display: none; }
 
+
+
+    .linkbox2{
+        display: flex;
+        align-items: center;
+        align-self: center;
+        width: auto;
+        height: auto;
+        padding: 2px;
+        border: 0px solid #4d453d;
+        border-radius: 5px;
+
+        color: #4d453d;
+        overflow: hidden;
+        transition: background 0.12s ease, transform 0.12s ease;
+        transform-origin: center;
+        justify-content: center;
+        font-family:inherit;
+        flex-direction: column;
+        margin-top:5px;
+        margin-bottom:5px;
+        text-decoration: none;
+    }
+
+.linkbox2-text{
+        display: flex;
+        align-items: center;
+        width:auto;
+        height: auto;
+        border: 0px solid #4d453d;
+        border-radius: 5px;
+        color: #4d453d;
+        overflow: hidden;
+        transition: background 0.12s ease, transform 0.12s ease;
+        transform-origin: center;
+        justify-content: center;
+        font-family:inherit;
+        font-size:13px;
+        font-weight:450;
+        text-align:center;
+        cursor:pointer;
+        line-height:13px;
+        margin-top:5px;
+        margin-bottom:5px;
+        text-decoration: none;
+    }
+
+    .linkbox2-location{
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 400;
+        text-align:center;
+        line-height:13px;
+        height:30px;
+        width:92px;
+        padding: 5px;
+        text-align:center;
+        background: #4d453d;
+        color: #dfdcd8;
+        border-radius: 5px;
+    }
+    .link-list{
+        text-decoration: none;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+
 /* ── Notify form ─────────────────────────────────────────────────────────── */
 .notify-label {
     margin-top: 12px;
@@ -463,6 +534,7 @@ body {
     border-radius: 0;
 }
 
+
 /* Prevent iOS Safari from zooming the page when the email input gains focus.
    We keep font-size at 13px (matching all other elements so they scale
    proportionally) and instead suppress the auto-zoom via a viewport meta
@@ -565,3 +637,40 @@ body {
 /* (Smaller-than-iPhone-SE-width fallback removed: the JS scale transform
    now handles every viewport uniformly — the 315×667 design is preserved
    and only its visual size changes.) */
+
+   .float {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        top: 0;
+        left: 0;
+        width: 70px;
+        height: 120px;
+        background: #dfdcd8;
+                border: 1px solid #4d453d;
+        letter-spacing: 0.02em;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+        z-index: 5;
+        pointer-events: auto;
+        will-change: transform;
+        animation: linkbox-drift 10s linear infinite;
+        }
+
+        @keyframes linkbox-drift {
+    0%     { transform: translate(0, 0); }
+    15%    { transform: translate(60px, 80px); }
+    30%    { transform: translate(20px, 220px); }
+    45%    { transform: translate(0, 180px); }
+    60%    { transform: translate(40px, 0); }
+    75%    { transform: translate(60px, 200px); }
+    90%    { transform: translate(10px, 220px); }
+    100%   { transform: translate(0, 0); }
+}
+.float:hover {
+        animation-play-state: paused;
+        background: #ffd06a;
+        transform: scale(1.525);
+    }
