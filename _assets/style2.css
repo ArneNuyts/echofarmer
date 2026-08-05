@@ -80,6 +80,7 @@ body {
     align-self: center;
     flex-shrink: 0;
 }
+
 .release-cover img {
     width: 100%;
     height: 100%;
