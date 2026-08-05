@@ -23,8 +23,8 @@
     //   2. After that, if the layout still doesn't fit (very small phones),
     //      scale the entire card uniformly so nothing gets cropped.
     // The card's width stays at the design 315px (uniformly scaled by sx).
-    const DESIGN_W = 315;
-    const DESIGN_H = 867;
+    const DESIGN_W = 415;
+    const DESIGN_H = 767;
     const COVER_DESIGN = 250;
     const COVER_MIN    = 120; // don't let the artwork get smaller than this
     const fitCard = () => {
@@ -192,12 +192,12 @@
     // Icons are relative to the release page (we step out two folders to
     // reach the shared icons/ directory).
     const SERVICES = {
-        spotify:    { label: 'Spotify',     icon: '../../icons/SVG-STATES/NORMAL/spotify.svg' },
-        apple:      { label: 'Apple Music', icon: '../../icons/SVG-STATES/NORMAL/apple-music.svg' },
-        youtube:    { label: 'YouTube',     icon: '../../icons/SVG-STATES/NORMAL/youtube.svg' },
-        bandcamp:   { label: 'Bandcamp',    icon: '../../icons/SVG-STATES/NORMAL/bandcamp.svg' },
-        soundcloud: { label: 'SoundCloud',  icon: '../../icons/SVG-STATES/NORMAL/soundcloud.svg' },
-        tidal:      { label: 'Tidal',       icon: '../../icons/SVG-STATES/NORMAL/tidal.svg' }
+        spotify:    { icon: '../../icons/SVG-STATES/NORMAL/spotify.svg' },
+        apple:      { icon: '../../icons/SVG-STATES/NORMAL/apple-music.svg' },
+        youtube:    { icon: '../../icons/SVG-STATES/NORMAL/youtube.svg' },
+        bandcamp:   { icon: '../../icons/SVG-STATES/NORMAL/bandcamp.svg' },
+        soundcloud: { icon: '../../icons/SVG-STATES/NORMAL/soundcloud.svg' },
+        tidal:      { icon: '../../icons/SVG-STATES/NORMAL/tidal.svg' }
     };
 
     const serviceList = document.querySelector('.service-list');
@@ -221,9 +221,7 @@
             a.target = '_blank';
             a.rel = 'noopener noreferrer';
             a.innerHTML =
-                `<img class="service-icon" src="${meta.icon}" alt="" aria-hidden="true">` +
-                `<span class="service-name">${meta.label}</span>` +
-                `<span class="service-action">${live ? 'listen' : 'follow'}</span>`;
+                `<img class="service-icon" src="${meta.icon}" alt="" aria-hidden="true">`;
             a.addEventListener('click', () => {
                 gcEvent('release-link/' + key + '/' + (live ? 'listen' : 'follow'));
             });

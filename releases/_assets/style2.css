@@ -47,7 +47,7 @@ body {
     width: 415px;
     /* Height + cover size are driven by --card-height and --cover-size,
        set by JS so the layout shrinks the artwork before scaling everything. */
-    height: var(--card-height, 867px);
+    height: var(--card-height, 767px);
     background: #dfdcd8;
     border: 2px solid #595147;
     border-radius: 5px;
@@ -77,14 +77,14 @@ body {
 .linkbox{
         display: flex;
         align-items: center;
-        height: 40px;
+        height: auto;
+        padding: 20px;
         border: 1px solid #4d453d;
         border-radius: 5px;
         background: #dfdcd8;
         color: #4d453d;
         text-decoration: none;
         overflow: hidden;
-        padding: 0;
         transition: background 0.12s ease, transform 0.12s ease;
         transform-origin: center;
     
@@ -111,34 +111,77 @@ body {
         background: #f0ede9;
         transform: scale(1.025);
     }
-.linkbox2{
+
+    .linkbox2{
         display: flex;
         align-items: center;
-        width: 250px;
+        width:auto;
         height: auto;
+        padding: 5px;
         border: 1px solid #4d453d;
         border-radius: 5px;
         background: #dfdcd8;
         color: #4d453d;
-        text-decoration: none;
         overflow: hidden;
-        padding: 0;
         transition: background 0.12s ease, transform 0.12s ease;
         transform-origin: center;
-    
         justify-content: center;
         font-family:inherit;
         font-size:20px;
         font-weight:700;
         text-align:center;
         cursor:pointer;
-        width:auto;
-        display: flex;
         line-height:25px;
         margin-top:5px;
         margin-bottom:5px;
+        text-decoration: none;
     }
-    
+
+.linkbox2-text{
+        display: flex;
+        align-items: center;
+        width:300px;
+        height: auto;
+        border: 0px solid #4d453d;
+        border-radius: 5px;
+        color: #4d453d;
+        overflow: hidden;
+        transition: background 0.12s ease, transform 0.12s ease;
+        transform-origin: center;
+        justify-content: center;
+        font-family:inherit;
+        font-size:20px;
+        font-weight:700;
+        text-align:center;
+        cursor:pointer;
+        line-height:25px;
+        margin-top:5px;
+        margin-bottom:5px;
+        text-decoration: none;
+    }
+
+    .linkbox2-location{
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 400;
+        text-align:center;
+        line-height:15px;
+        height:55px;
+        width:92px;
+        padding: 5px;
+        text-align:center;
+        background: #4d453d;
+        color: #dfdcd8;
+        border-radius: 5px;
+    }
+    .link-list{
+        text-decoration: none;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
     .linkbox2:hover {
         animation: none;
         background: #f0ede9;
@@ -445,21 +488,24 @@ body {
 
 /* ── Streaming service buttons ───────────────────────────────────────────── */
 /* 250×35 row: 30×30 icon + name (regular #4d453d 13px) + 70×30 follow pill */
+
+
 .service-list {
     margin-top: 5px;
-    width: 250px;
-    align-self: center;
+    width: 350px;
+    width: fit-content;
+    margin: 5px auto 0;
     list-style: none;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 6px;
 }
 .service-link {
     display: flex;
     align-items: center;
-    width: 250px;
-    height: 35px;
-    border: 1px solid #4d453d;
+    width: 36px;
+    height: 36px;
+    border: 0px solid #4d453d;
     border-radius: 5px;
     background: #dfdcd8;
     color: #4d453d;
@@ -474,44 +520,20 @@ body {
     transform: scale(1.025);
 }
 .service-icon {
-    width: 30px;
-    height: 30px;
-    margin-left: 2px;
+    width: 34px;
+    height: 34px;
+    margin-left: 0px;
     flex-shrink: 0;
     object-fit: contain;
 }
-.service-name {
-    flex: 1;
-    padding-left: 8px;
-    font-family: "Geist", sans-serif;
-    font-weight: 450;
-    font-size: 13px;
-    color: #4d453d;
-    text-align: left;
-    line-height: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.service-action {
-    width: 70px;
-    height: 30px;
-    margin-right: 1.5px;
-    background: #4d453d;
-    color: #dfdcd8;
-    border-radius: 5px;
-    font-family: "Geist", sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: lowercase;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.08s ease;
-}
+
 .service-link:hover .service-action {
     background: #595147;
+}
+
+.space {
+    height: 3px;
+    color: transparent;
 }
 
 /* ── Responsive scaling ──────────────────────────────────────────────────── */
