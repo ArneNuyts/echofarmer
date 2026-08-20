@@ -66,7 +66,6 @@ const samplerConfig = [
         x: 70,                             // Initial X position (%)
         y: 60                              // Initial Y position (%)
     },
-    // hidden for now — restore when ready:
     {
         gif: 'gifs/bij-ani-fast3.webp',
         staticImg: 'gifs/bij-ani-fast2.png',
@@ -86,7 +85,6 @@ const samplerConfig = [
         x: 25,
         y: 25
     },
-   
     {
         gif: 'gifs/bij-ani-fast3.webp',
         staticImg: 'gifs/bij-ani-fast2.png',
@@ -96,15 +94,94 @@ const samplerConfig = [
         x: 25,
         y: 25
     },
+    {
+         gif: 'gifs/monobaby.webp',
+         staticImg: 'gifs/monobaby.png',
+         audio: 'audio/mono2.wav',
+         width: 120,
+         height: 120,
+         x: 60,
+         y: 45
+   },
+
+   {
+         gif: 'gifs/monobaby-green.webp',
+         staticImg: 'gifs/monobaby-green.png',
+         audio: 'audio/mono1.wav',
+         width: 120,
+         height: 120,
+         x: 60,
+         y: 45
+   },
+   // {
+     //    gif: 'gifs/car.webp',
+     //    staticImg: 'gifs/car.png',
+     //    audio: 'audio/car.wav',
+     //    width: 120,
+     //    height: 120,
+     //    x: 60,
+     //    y: 45
+    //},
+    //{
+         //gif: 'gifs/centi.webp',
+         //staticImg: 'gifs/centi.png',
+         //audio: 'audio/centi1.wav',
+         //width: 120,
+         //height: 120,
+         //x: 60,
+         //y: 45
+    //},
+    //{
+     //    gif: 'gifs/tornado.webp',
+     //   staticImg: 'gifs/tornado.png',
+     //    audio: 'audio/tornado1.wav',
+      //   width: 100,
+      //   height: 100,
+      //   x: 60,
+      //   y: 45
+   // },
+   // {
+     //    gif: 'gifs/flower-web.webp',
+     //    staticImg: 'gifs/flower-web.png',
+     //    audio: 'audio/tornado3.wav',
+     //    width: 100,
+     //    height: 100,
+     //    x: 60,
+     //    y: 45
+   // },
     // {
-    //     gif: 'gifs/blue_dolphin.webp',
-    //     staticImg: 'gifs/blue_dolphin.png',
-    //     audio: 'audio/dans2.m4a',
-    //     width: 112,
-    //     height: 112,
-    //     x: 60,
-    //     y: 45
-    // },
+      //  gif: 'gifs/sun2.webp',     // Path to GIF
+      //  staticImg: 'gifs/sun2.png', // Path to static image (first frame)
+      //  audioList: [                       // Random sample picked on each trigger
+         //   'audio/sun-samples/sun1.wav',
+        //    'audio/sun-samples/sun2.wav',
+         //   'audio/sun-samples/sun3.wav',
+         //   'audio/sun-samples/sun4.wav',
+
+       // ],
+      //  width: 112,                        // Width in pixels
+      //  height: 112,                       // Height in pixels
+      //  x: 50,                             // Initial X position (%)
+      //  y: 20                              // Initial Y position (%)
+   // },
+    //{
+         //gif: 'gifs/seed-30f.webp',
+         //staticImg: 'gifs/seed-30f.png',
+         //audio: 'audio/mono2.wav',
+         //width: 100,
+         //height: 100,
+         //x: 60,
+         //y: 45
+   // },
+   // {
+        // gif: 'gifs/seed-canva1.webp',
+        // staticImg: 'gifs/seed-canva1.png',
+        // audio: 'audio/seed1.wav',
+        // width: 100,
+        // height: 100,
+        // x: 60,
+        // y: 45
+ //   },
     // {
     //     gif: 'gifs/blue_dolphin.webp',
     //     staticImg: 'gifs/blue_dolphin.png',
@@ -1180,9 +1257,9 @@ class GifSampler {
         // QWERTY. Display labels (this.keyLabels) are resolved per-visitor
         // by _initKeyLabels via KeyboardLayoutMap (Chromium) or by learning
         // from keydown events (Firefox/Safari).
-        this.triggerCodes = ['KeyA','KeyW','KeyS','KeyE','KeyD','KeyF','KeyT','KeyG','KeyY','KeyH','KeyU','KeyJ','KeyK','KeyO','KeyL'];
+        this.triggerCodes = ['KeyA','KeyW','KeyS','KeyE','KeyD','KeyF','KeyT','KeyG','KeyY','KeyH','KeyU','KeyJ','KeyK','KeyO','KeyL','KeyB','KeyN',];
         // Display labels — QWERTY defaults; updated by _initKeyLabels
-        this.keyLabels = ['A','W','S','E','D','F','T','G','Y','H','U','J','K','O','L'];
+        this.keyLabels = ['A','W','S','E','D','F','T','G','Y','H','U','J','K','O','L','B','N'];
         this.init();
         this.setupAudioUnlock();
         this.setupKeyboardListeners();
