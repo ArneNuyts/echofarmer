@@ -154,7 +154,30 @@ body {
 .linkbox2-text{
         display: flex;
         align-items: center;
-        width:300px;
+        width:240px;
+        height: auto;
+        border: 0px solid #4d453d;
+        border-radius: 5px;
+        color: #4d453d;
+        overflow: hidden;
+        transition: background 0.12s ease, transform 0.12s ease;
+        transform-origin: center;
+        justify-content: center;
+        font-family:inherit;
+        font-size:20px;
+        font-weight:700;
+        text-align:center;
+        cursor:pointer;
+        line-height:25px;
+        margin-top:5px;
+        margin-bottom:5px;
+        text-decoration: none;
+    }
+
+    .linkbox2-text2{
+        display: flex;
+        align-items: center;
+        width:220px;
         height: auto;
         border: 0px solid #4d453d;
         border-radius: 5px;
@@ -201,6 +224,49 @@ body {
         background: #f0ede9;
         transform: scale(1.025);
     }
+
+    .box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid #4d453d;
+    border-radius: 5px;
+    box-sizing: border-box;
+    padding: 7px;
+    }
+
+.box > div {
+    min-width: 0;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.box > form.notify-form {
+    grid-column: 1 / -1;
+    
+    width: 100%;
+    margin: 0;
+    padding: 0px 0;
+
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    box-sizing: border-box;
+}
+
+.box > form.notify-form .notify-row {
+    width: 250px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    min-height: 100%;
+}
+
     @keyframes color {
     from {
         
@@ -354,8 +420,7 @@ body {
 
 .notify-form {
     margin-top: 10px;
-    width: 250px;
-    align-self: center;
+    width: 100%;
     position: relative;
 }
 .notify-form[hidden] { display: none; }
@@ -440,10 +505,13 @@ body {
 /* Success pop-up: absolutely overlays the countdown + notify-label area */
 .notify-success-pop {
     position: absolute;
-    left: 0;
-    right: 0;
+    inset: 0;
+    z-index: 1000;
     background: #dfdcd8;
-    display: flex;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+       display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
@@ -451,15 +519,19 @@ body {
     font-weight: 700;
     color: #4d453d;
     padding: 8px 32.5px;
-    z-index: 7;
-    opacity: 0;
+   opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.8s ease;
+    transition: opacity 0.8s ease, visibility 0s linear 0.8s;
     line-height: 1.3;
 }
+
 .notify-success-pop.visible {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+
+    transition: opacity 0.8s ease;
 }
 
 /* Custom validation tooltip */
