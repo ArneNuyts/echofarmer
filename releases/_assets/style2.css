@@ -267,14 +267,7 @@ body {
     min-height: 100%;
 }
 
-    @keyframes color {
-    from {
-        
-        }
-    to {
-        background-color: #ffc37a;
-        }
-    }
+
 /* ── Floating "OUT 15/05!" badge (85×25) ────────────────────────────────── */
 /* Bounces inside an explicit 315×330 region anchored at the top of the
    card. Inside that region the badge's outer walls are clamped to:
@@ -417,6 +410,15 @@ body {
     line-height: 1.1;
 }
 .notify-label[hidden] { display: none; }
+
+.notify-release {
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 450;
+    color: #4d453d;
+    text-align: center;
+    line-height: 1.1;
+}
 
 .notify-form {
     margin-top: 10px;
