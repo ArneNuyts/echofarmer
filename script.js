@@ -151,7 +151,7 @@ const samplerConfig = [
    },
     {
     gif: 'gifs/sun2.webp',     // Path to GIF
-    staticImg: 'gifs/sun2.png', // Path to static image (first frame)
+    staticImg: 'gifs/sun2-static.webp', // Path to static image (first frame)
     audioList: [                       // Random sample picked on each trigger
     'audio/sun-samples/sun1.wav',
     'audio/sun-samples/sun2.wav',
