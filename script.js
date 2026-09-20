@@ -156,7 +156,7 @@ const samplerConfig = [
     'audio/sun-samples/sun1.wav',
     'audio/sun-samples/sun2.wav',
     'audio/sun-samples/sun3.wav',
-    'audio/sun-samples/sun4.wav',
+    'audio/sun-samples/sun4.wav'
     ],
     width: 112,                        // Width in pixels
     height: 112,                       // Height in pixels
@@ -164,24 +164,7 @@ const samplerConfig = [
     y: 20                              // Initial Y position (%)
   },
 
-{
-        gif: 'gifs/sun2.webp',     // Path to GIF
-        staticImg: 'gifs/sun2-static.webp', // Path to static image (first frame)
-        audioList: [                       // Random sample picked on each trigger
-            'audio/sweet-samples/samp1.m4a',
-            'audio/sweet-samples/samp2.m4a',
-            'audio/sweet-samples/samp3.m4a',
-            'audio/sweet-samples/samp4.m4a',
-            'audio/sweet-samples/samp5.m4a',
-            'audio/sweet-samples/samp6.m4a',
-            'audio/sweet-samples/samp8.m4a',
-            'audio/sweet-samples/samp9.m4a'
-        ],
-        width: 112,                        // Width in pixels
-        height: 112,                       // Height in pixels
-        x: 50,                             // Initial X position (%)
-        y: 20                              // Initial Y position (%)
-    },
+
 
     {
          gif: 'gifs/seed-30f.webp',
