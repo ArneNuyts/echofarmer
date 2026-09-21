@@ -166,15 +166,7 @@ const samplerConfig = [
 
 
 
-    {
-         gif: 'gifs/seed-30f.webp',
-         staticImg: 'gifs/seed-30f.png',
-         audio: 'audio/mono2.wav',
-         width: 100,
-         height: 100,
-         x: 60,
-         y: 45
-    },
+   
   {
         gif: 'gifs/seed-canva1.webp',
         staticImg: 'gifs/seed-canva1.png',
